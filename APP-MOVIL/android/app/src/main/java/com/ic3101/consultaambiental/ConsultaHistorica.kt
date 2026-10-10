@@ -14,6 +14,7 @@ import java.util.Locale
 @Composable
 fun ConsultaHistorica() {
     var variableElegida by remember { mutableStateOf("temperatura") }
+    var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
     var consultar by remember { mutableStateOf(false) }
     var intento by remember { mutableIntStateOf(0) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
@@ -21,6 +22,12 @@ fun ConsultaHistorica() {
     var mensaje by remember { mutableStateOf("Selecciona las variables y consulta el historial.") }
     var recibido by remember { mutableStateOf(false) }
     var sinFecha by remember { mutableIntStateOf(0) }
+
+    val variableFiltro = variables.first { it.clave == variableElegida }
+    val limitesFiltro = if (filtro.activo) interpretarLimites(filtro.limites.getValue(variableElegida)) else null
+    val filtroValido = !filtro.activo || limitesFiltro != null
+    val filtrados = remember(datos, variableElegida, limitesFiltro) { filtrarLecturas(datos, variableElegida, limitesFiltro) }
+    val datosConsulta = if (filtroValido) filtrados.registros else emptyList()
 
     DisposableEffect(consultar, intento) {
         if (!consultar) {
@@ -73,13 +80,15 @@ fun ConsultaHistorica() {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Valores de todas las lecturas guardadas.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectorVariable(variableElegida) { variableElegida = it }
-        Button(enabled = !cargando, onClick = { consultar = true; intento++ }) {
+        ControlFiltro(variableFiltro, filtro) { filtro = it }
+        Button(enabled = filtroValido && !cargando, onClick = { consultar = true; intento++ }) {
             Text("Consultar historial")
         }
         val variableCsv = variables.first { it.clave == variableElegida }
-        val resumenCsv = extremosHistoricos(datos, variableElegida)
+        val resumenCsv = extremosHistoricos(datosConsulta, variableElegida)
         BotonExportarCsv("extremos_${variableElegida}.csv",
-            if (recibido && !cargando && resumenCsv != null) csvExtremos(variableCsv, resumenCsv) else null)
+            if (recibido && !cargando && resumenCsv != null) csvExtremos(variableCsv, resumenCsv, limitesFiltro) else null)
+        if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
         Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (recibido && !cargando) {
@@ -88,7 +97,7 @@ fun ConsultaHistorica() {
                 Text("Periodo registrado: ${fechaHistorica(datos.minOf { it.ts })} al ${fechaHistorica(datos.maxOf { it.ts })}")
             }
             variables.filter { it.clave == variableElegida }.forEach { variable ->
-                val resumen = remember(datos, variable.clave) { extremosHistoricos(datos, variable.clave) }
+                val resumen = remember(datosConsulta, variable.clave) { extremosHistoricos(datosConsulta, variable.clave) }
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(variable.nombre, style = MaterialTheme.typography.titleMedium)

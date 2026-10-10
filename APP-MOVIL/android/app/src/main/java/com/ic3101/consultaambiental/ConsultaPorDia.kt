@@ -18,6 +18,7 @@ fun ConsultaPorDia() {
     var inicio by remember { mutableStateOf(LocalDate.now(zonaConsulta)) }
     var fin by remember { mutableStateOf(LocalDate.now(zonaConsulta)) }
     var variableElegida by remember { mutableStateOf("temperatura") }
+    var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
     var rangoConsulta by remember { mutableStateOf<RangoFechas?>(null) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
@@ -31,6 +32,12 @@ fun ConsultaPorDia() {
         cargando = false
         mensaje = "Pulsa Consultar para cargar el rango elegido."
     }
+
+    val variableFiltro = variables.first { it.clave == variableElegida }
+    val limitesFiltro = if (filtro.activo) interpretarLimites(filtro.limites.getValue(variableElegida)) else null
+    val filtroValido = !filtro.activo || limitesFiltro != null
+    val filtrados = remember(datos, variableElegida, limitesFiltro) { filtrarLecturas(datos, variableElegida, limitesFiltro) }
+    val datosConsulta = if (filtroValido) filtrados.registros else emptyList()
 
     DisposableEffect(rangoConsulta, intento) {
         val rango = rangoConsulta
@@ -78,23 +85,25 @@ fun ConsultaPorDia() {
         SelectorFechaDiaria("Fecha inicial", inicio) { inicio = it; limpiarResultados() }
         SelectorFechaDiaria("Fecha final", fin) { fin = it; limpiarResultados() }
         SelectorVariable(variableElegida) { variableElegida = it }
+        ControlFiltro(variableFiltro, filtro) { filtro = it }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        Button(enabled = error == null && !cargando, onClick = {
+        Button(enabled = filtroValido && error == null && !cargando, onClick = {
             rangoConsulta = RangoFechas(inicio, fin)
             intento++
         }) { Text("Consultar promedios diarios") }
         val variableCsv = variables.first { it.clave == variableElegida }
         val rangoCsv = rangoConsulta
-        val resultadosCsv = rangoCsv?.let { promediosDiarios(datos, it, variableElegida) }.orEmpty()
+        val resultadosCsv = rangoCsv?.let { promediosDiarios(datosConsulta, it, variableElegida) }.orEmpty()
         BotonExportarCsv("promedios_dia_${rangoCsv?.inicio}_${rangoCsv?.fin}_${variableElegida}.csv",
-            if (!cargando && resultadosCsv.any { it.promedio != null }) csvPorDia(variableCsv, resultadosCsv) else null)
+            if (!cargando && resultadosCsv.any { it.promedio != null }) csvPorDia(variableCsv, resultadosCsv, limitesFiltro) else null)
+        if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
         Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (!cargando) rangoConsulta?.let { rango ->
             Text("Resultados: ${fechaDiaria(rango.inicio)} al ${fechaDiaria(rango.fin)}")
             Text("Promedio de las lecturas disponibles en cada día.", style = MaterialTheme.typography.bodySmall)
             variables.filter { it.clave == variableElegida }.forEach { variable ->
-                val resultados = remember(datos, rango, variable.clave) { promediosDiarios(datos, rango, variable.clave) }
+                val resultados = remember(datosConsulta, rango, variable.clave) { promediosDiarios(datosConsulta, rango, variable.clave) }
                 val conDatos = resultados.filter { it.promedio != null }
                 Text(variable.nombre, style = MaterialTheme.typography.titleMedium)
                 Text("${conDatos.size} de ${resultados.size} días con datos válidos.")
