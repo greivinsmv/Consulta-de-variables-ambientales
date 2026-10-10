@@ -5,7 +5,7 @@ La navegación superior se desplaza horizontalmente si no caben los botones.
 
 ## Promedios diarios
 
-Selecciona fecha inicial y final, marca al menos una variable y pulsa
+Selecciona fecha inicial y final, elige una variable con los botones y pulsa
 **Consultar promedios diarios**. Ambas fechas se incluyen y se interpretan en
 `America/Costa_Rica`. Se rechazan fechas invertidas y fechas futuras.
 
@@ -38,13 +38,13 @@ Desde la carpeta `APP-MOVIL/android`:
 
 Para la prueba manual, consulta un día con registros, un rango que lo incluya junto
 con días vacíos, y un rango invertido (el botón debe quedar deshabilitado).
-Desmarca todas las variables y comprueba que no se habilita la consulta.
+Cambia de variable y comprueba que se muestran sus propios resultados.
 La comprobación con varios días poblados requiere un historial en Firebase;
 la app no genera ni carga datos sintéticos.
 
 ## Máximos y mínimos históricos
 
-Selecciona variables y pulsa **Consultar máximos y mínimos**. Se analizan las
+Selecciona una variable y pulsa **Consultar máximos y mínimos**. Se analizan las
 lecturas originales de todo `lecturas/equipo01`, con fecha y hora de Costa Rica,
 por separado para cada variable. Los registros sin fecha numérica válida se
 omiten con aviso; los valores ausentes y no finitos no cuentan para esa variable.
@@ -58,7 +58,7 @@ un historial de gran volumen requerirá agregación o paginación.
 
 Prueba manual: consulta con las lecturas actuales y cambia los valores del DHT22
 en Wokwi para enviar una nueva lectura. Comprueba los extremos contra Firebase.
-Desmarca todas las variables y verifica que el botón queda deshabilitado.
+Cambia de variable y verifica que sus extremos y cantidades corresponden.
 
 ## Apariencia
 
@@ -76,7 +76,16 @@ y probar un tamaño de fuente mayor desde la configuración de Android.
 ## Selector de hora
 
 En **Por hora**, el menú **Hora del promedio** permite elegir cualquiera de las
-24 franjas (00:00–00:59 a 23:00–23:59). Esa selección se aplica a todas las
-variables marcadas. Se muestra solo el promedio y cantidad de la franja elegida,
+24 franjas (00:00–00:59 a 23:00–23:59). La franja se conserva al cambiar
+de variable con los botones. Se muestra solo el promedio y cantidad de la franja elegida,
 o **Sin datos**; los gráficos conservan la evolución de todo el día.
 Cambiar de hora no requiere una nueva descarga ni cambia los cálculos.
+
+## Botones de variables y gráficos plegables
+
+Las tres consultas tienen botones de Temperatura, Humedad y Punto de rocío.
+Solo una variable está activa; por defecto es Temperatura. Al cambiarla se
+reutilizan los registros descargados y no se modifica la consulta a Firebase.
+Los gráficos horarios y diarios están plegados bajo **Ver gráfico**.
+Cuando solo hay un promedio horario, se explica que hacen falta datos de otra
+hora para mostrar evolución, sin dibujar una línea o valores inexistentes.

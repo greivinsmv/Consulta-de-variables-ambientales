@@ -15,7 +15,7 @@ import java.util.Locale
 
 @Composable
 fun ConsultaHistorica() {
-    var seleccionadas by remember { mutableStateOf(variables.map { it.clave }.toSet()) }
+    var variableElegida by remember { mutableStateOf("temperatura") }
     var consultar by remember { mutableStateOf(false) }
     var intento by remember { mutableIntStateOf(0) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
@@ -75,16 +75,8 @@ fun ConsultaHistorica() {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Máximos y mínimos históricos", style = MaterialTheme.typography.headlineSmall)
         Text("Se analizan las lecturas originales de equipo01, no los promedios. Fechas en horario de Costa Rica.")
-        variables.forEach { variable ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = variable.clave in seleccionadas, onCheckedChange = { marcada ->
-                    seleccionadas = if (marcada) seleccionadas + variable.clave else seleccionadas - variable.clave
-                })
-                Text("${variable.nombre} (${variable.unidad})")
-            }
-        }
-        if (seleccionadas.isEmpty()) Text("Selecciona al menos una variable.", color = MaterialTheme.colorScheme.error)
-        Button(enabled = seleccionadas.isNotEmpty() && !cargando, onClick = { consultar = true; intento++ }) {
+        SelectorVariable(variableElegida) { variableElegida = it }
+        Button(enabled = !cargando, onClick = { consultar = true; intento++ }) {
             Text("Consultar máximos y mínimos")
         }
         if (cargando) CircularProgressIndicator()
@@ -94,7 +86,7 @@ fun ConsultaHistorica() {
             if (datos.isNotEmpty()) {
                 Text("Periodo registrado: ${fechaHistorica(datos.minOf { it.ts })} al ${fechaHistorica(datos.maxOf { it.ts })}")
             }
-            variables.filter { it.clave in seleccionadas }.forEach { variable ->
+            variables.filter { it.clave == variableElegida }.forEach { variable ->
                 val resumen = remember(datos, variable.clave) { extremosHistoricos(datos, variable.clave) }
                 Card(Modifier.fillMaxWidth()) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
