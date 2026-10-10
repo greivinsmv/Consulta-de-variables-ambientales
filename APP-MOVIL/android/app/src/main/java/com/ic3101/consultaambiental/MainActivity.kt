@@ -4,6 +4,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,7 +40,14 @@ class MainActivity : ComponentActivity() {
         setContent {
             ConsultaAmbientalTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-                    UltimaLectura(Modifier.padding(padding).padding(24.dp))
+                    var historial by remember { mutableStateOf(false) }
+                    Column(Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
+                        Row {
+                            TextButton(onClick = { historial = false }) { Text("Lectura actual") }
+                            TextButton(onClick = { historial = true }) { Text("Promedios por hora") }
+                        }
+                        if (historial) ConsultaPorHora() else UltimaLectura(Modifier)
+                    }
                 }
             }
         }
