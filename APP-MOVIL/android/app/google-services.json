@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "948968671412",
+    "firebase_url": "https://proyecto-iot-fa353-default-rtdb.firebaseio.com",
+    "project_id": "proyecto-iot-fa353",
+    "storage_bucket": "proyecto-iot-fa353.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:948968671412:android:9be49d40ba8c036425efe1",
+        "android_client_info": {
+          "package_name": "com.ic3101.consultaambiental"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC7vgqs-l87R7R5O2BxafJTXNmyOPwMma0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

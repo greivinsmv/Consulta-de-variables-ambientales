@@ -1,4 +1,4 @@
-package com.ic3101.consultaambienta
+package com.ic3101.consultaambiental
 
 import org.junit.Test
 

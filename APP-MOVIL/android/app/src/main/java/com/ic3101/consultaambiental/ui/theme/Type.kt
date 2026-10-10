@@ -1,4 +1,4 @@
-package com.ic3101.consultaambienta.ui.theme
+package com.ic3101.consultaambiental.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
