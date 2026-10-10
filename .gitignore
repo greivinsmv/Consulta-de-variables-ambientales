@@ -1,0 +1,17 @@
+# Android: configuración local y archivos generados
+**/local.properties
+**/.gradle/
+**/build/
+**/.idea/
+*.iml
+*.jks
+*.keystore
+
+# Web: dependencias y compilación
+**/node_modules/
+**/dist/
+
+# Credenciales locales
+.env
+.env.*
+!.env.example
