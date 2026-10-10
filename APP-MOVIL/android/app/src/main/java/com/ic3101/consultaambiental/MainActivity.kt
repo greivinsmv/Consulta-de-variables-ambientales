@@ -47,10 +47,12 @@ class MainActivity : ComponentActivity() {
                             TextButton(onClick = { pantalla = "actual" }) { Text("Lectura actual") }
                             TextButton(onClick = { pantalla = "hora" }) { Text("Promedios por hora") }
                             TextButton(onClick = { pantalla = "dia" }) { Text("Promedios diarios") }
+                            TextButton(onClick = { pantalla = "historico" }) { Text("Máximos y mínimos") }
                         }
                         when (pantalla) {
                             "hora" -> ConsultaPorHora()
                             "dia" -> ConsultaPorDia()
+                            "historico" -> ConsultaHistorica()
                             else -> UltimaLectura(Modifier)
                         }
                     }
