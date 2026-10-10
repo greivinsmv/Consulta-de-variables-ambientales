@@ -84,9 +84,9 @@ fun UltimaLectura(modifier: Modifier = Modifier) {
             TarjetaMedicion("Humedad", valor(humedad, "%"), "humedad", Modifier.weight(1f))
             TarjetaMedicion("Punto de rocío", valor(puntoRocio, "°C"), "rocio", Modifier.weight(1f))
         }
-        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Fecha de la lectura", style = MaterialTheme.typography.titleSmall)
+                Text("Fecha de lectura", style = MaterialTheme.typography.titleSmall)
                 Text(fechaTexto, style = MaterialTheme.typography.bodyLarge)
                 Text("Horario de Costa Rica", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
