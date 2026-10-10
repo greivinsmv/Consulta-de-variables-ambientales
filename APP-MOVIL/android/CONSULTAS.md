@@ -72,3 +72,11 @@ los colores dinámicos del teléfono para conservar la paleta del proyecto.
 Comprobación visual pendiente en el emulador: recorrer las cuatro pantallas,
 activar/desactivar el modo oscuro, reiniciar la app y verificar la preferencia,
 y probar un tamaño de fuente mayor desde la configuración de Android.
+
+## Selector de hora
+
+En **Por hora**, el menú **Hora del promedio** permite elegir cualquiera de las
+24 franjas (00:00–00:59 a 23:00–23:59). Esa selección se aplica a todas las
+variables marcadas. Se muestra solo el promedio y cantidad de la franja elegida,
+o **Sin datos**; los gráficos conservan la evolución de todo el día.
+Cambiar de hora no requiere una nueva descarga ni cambia los cálculos.
