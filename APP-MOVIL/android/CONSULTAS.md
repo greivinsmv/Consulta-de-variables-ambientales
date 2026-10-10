@@ -105,3 +105,8 @@ Las barras parten de cero, también para valores negativos. Los días vacíos se
 representan con un guion. Todos los valores siguen disponibles en texto.
 La comprobación de legibilidad, selección por toque y modo oscuro en el emulador
 se realiza además de la compilación y pruebas de cálculo.
+
+El selector de tema usa una cápsula con sol/luna y etiquetas CLARO/OSCURO.
+El control circular se desplaza al cambiar el modo; toda la cápsula es pulsable.
+Expone el estado como interruptor para lectores de pantalla y mantiene la misma
+preferencia local de apariencia. Comprobar la animación y contraste en el emulador.

@@ -16,8 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -66,13 +64,10 @@ fun InterfazAmbiental() {
                         Surface(color = Color.White.copy(alpha = 0.16f), shape = CircleShape) {
                             Box(Modifier.padding(8.dp)) { IconoAmbiental(seccion.clave, Modifier.size(22.dp), Color.White) }
                         }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text("Modo oscuro", color = Color.White, style = MaterialTheme.typography.labelMedium)
-                            Switch(checked = oscuro, onCheckedChange = {
-                                oscuro = it
-                                preferencias.edit().putBoolean("oscuro", it).apply()
-                            }, modifier = Modifier.semantics { contentDescription = "Modo oscuro" })
-                        }
+                        SelectorTema(oscuro = oscuro, alCambiar = {
+                            oscuro = it
+                            preferencias.edit().putBoolean("oscuro", it).apply()
+                        })
                     }
                     Text(seccion.titulo, color = Color.White, style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold)
