@@ -83,6 +83,11 @@ fun ConsultaPorDia() {
             rangoConsulta = RangoFechas(inicio, fin)
             intento++
         }) { Text("Consultar promedios diarios") }
+        val variableCsv = variables.first { it.clave == variableElegida }
+        val rangoCsv = rangoConsulta
+        val resultadosCsv = rangoCsv?.let { promediosDiarios(datos, it, variableElegida) }.orEmpty()
+        BotonExportarCsv("promedios_dia_${rangoCsv?.inicio}_${rangoCsv?.fin}_${variableElegida}.csv",
+            if (!cargando && resultadosCsv.any { it.promedio != null }) csvPorDia(variableCsv, resultadosCsv) else null)
         if (cargando) CircularProgressIndicator()
         Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (!cargando) rangoConsulta?.let { rango ->

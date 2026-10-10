@@ -98,6 +98,11 @@ fun ConsultaPorHora() {
         SelectorVariable(variableElegida) { variableElegida = it }
         Button(enabled = !cargando && !dia.isAfter(LocalDate.now(zonaConsulta)),
             onClick = { fechaConsulta = dia; intento++ }) { Text("Consultar promedios") }
+        val variableCsv = variables.first { it.clave == variableElegida }
+        val fechaCsv = fechaConsulta
+        val resultadosCsv = fechaCsv?.let { promediosPorHora(datos, it, variableElegida) }.orEmpty()
+        BotonExportarCsv("promedios_hora_${fechaCsv}_${variableElegida}.csv",
+            if (!cargando && fechaCsv != null && resultadosCsv.isNotEmpty()) csvPorHora(fechaCsv, variableCsv, resultadosCsv) else null)
         if (cargando) CircularProgressIndicator()
         Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         fechaConsulta?.let { fecha ->

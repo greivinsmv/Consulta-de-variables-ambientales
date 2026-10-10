@@ -76,6 +76,10 @@ fun ConsultaHistorica() {
         Button(enabled = !cargando, onClick = { consultar = true; intento++ }) {
             Text("Consultar historial")
         }
+        val variableCsv = variables.first { it.clave == variableElegida }
+        val resumenCsv = extremosHistoricos(datos, variableElegida)
+        BotonExportarCsv("extremos_${variableElegida}.csv",
+            if (recibido && !cargando && resumenCsv != null) csvExtremos(variableCsv, resumenCsv) else null)
         if (cargando) CircularProgressIndicator()
         Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (recibido && !cargando) {

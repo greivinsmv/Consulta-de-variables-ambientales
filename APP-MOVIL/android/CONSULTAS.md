@@ -110,3 +110,27 @@ El selector de tema usa una cápsula con sol/luna y etiquetas CLARO/OSCURO.
 El control circular se desplaza al cambiar el modo; toda la cápsula es pulsable.
 Expone el estado como interruptor para lectores de pantalla y mantiene la misma
 preferencia local de apariencia. Comprobar la animación y contraste en el emulador.
+
+## Exportar CSV
+
+Después de consultar datos válidos, **Exportar CSV** abre el selector de archivos
+Android. El usuario elige nombre y ubicación sin conceder acceso general al
+almacenamiento. Se informa guardado correcto, cancelación o fallo. La exportación
+usa una copia de los resultados al pulsar el botón; nuevos registros no cambian
+el contenido mientras se elige el destino.
+
+- Por hora: todas las 24 franjas del día consultado, de la variable seleccionada.
+- Por día: todos los días del rango consultado, de la variable seleccionada.
+- Extremos: mínimo y máximo, primera fecha de cada extremo, repeticiones y cantidad
+  de lecturas válidas.
+
+Los campos incluyen unidades y zona `America/Costa_Rica`. El archivo usa UTF-8
+con BOM, separador punto y coma, coma decimal y tres decimales; la pantalla redondea
+a un decimal. Los promedios ausentes quedan vacíos con estado **Sin datos** y cero
+lecturas; un promedio de cero se escribe numéricamente. No se exportan consultas
+sin ninguna lectura válida. Si Excel no separa las columnas automáticamente,
+importar desde texto/CSV indicando UTF-8 y separador punto y coma.
+
+Prueba manual pendiente: guardar CSV de cada consulta, cancelar el selector,
+abrir los archivos y comparar cifras y fechas con los resultados de la app.
+La exportación no sube datos a Firebase ni a otro servicio.
