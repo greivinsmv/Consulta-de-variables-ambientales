@@ -4,31 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material3.TextButton
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.ValueEventListener
-import com.ic3101.consultaambiental.ui.theme.ConsultaAmbientalTheme
+import com.google.firebase.database.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -38,27 +19,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            ConsultaAmbientalTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { padding ->
-                    var pantalla by remember { mutableStateOf("actual") }
-                    Column(Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState())) {
-                        Row(Modifier.horizontalScroll(rememberScrollState())) {
-                            TextButton(onClick = { pantalla = "actual" }) { Text("Lectura actual") }
-                            TextButton(onClick = { pantalla = "hora" }) { Text("Promedios por hora") }
-                            TextButton(onClick = { pantalla = "dia" }) { Text("Promedios diarios") }
-                            TextButton(onClick = { pantalla = "historico" }) { Text("Máximos y mínimos") }
-                        }
-                        when (pantalla) {
-                            "hora" -> ConsultaPorHora()
-                            "dia" -> ConsultaPorDia()
-                            "historico" -> ConsultaHistorica()
-                            else -> UltimaLectura(Modifier)
-                        }
-                    }
-                }
-            }
-        }
+        setContent { InterfazAmbiental() }
     }
 }
 
@@ -113,14 +74,24 @@ fun UltimaLectura(modifier: Modifier = Modifier) {
         formato.format(Date(it))
     } ?: "Sin fecha"
 
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Consulta ambiental", style = MaterialTheme.typography.headlineMedium)
-        Text("")
-        Text(mensaje)
-        Text("Temperatura: ${valor(temperatura, "°C")}")
-        Text("Humedad: ${valor(humedad, "%")}")
-        Text("Punto de rocío: ${valor(puntoRocio, "°C")}")
-        Text("Fecha del registro: $fechaTexto (Costa Rica)")
-        Text("El punto de rocío se calcula a partir de temperatura y humedad.")
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        Text("Tu ambiente, de un vistazo", style = MaterialTheme.typography.titleLarge)
+        Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant) {
+            Text(mensaje, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.bodyMedium)
+        }
+        TarjetaTemperatura(valor(temperatura, "°C"))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            TarjetaMedicion("Humedad", valor(humedad, "%"), "humedad", Modifier.weight(1f))
+            TarjetaMedicion("Punto de rocío", valor(puntoRocio, "°C"), "rocio", Modifier.weight(1f))
+        }
+        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+            Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text("Fecha de la lectura", style = MaterialTheme.typography.titleSmall)
+                Text(fechaTexto, style = MaterialTheme.typography.bodyLarge)
+                Text("Horario de Costa Rica", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+        Text("El punto de rocío se calcula a partir de temperatura y humedad.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     }
 }
