@@ -44,6 +44,8 @@ fun ConsultaPorHora() {
     var cargando by remember { mutableStateOf(false) }
     var mensaje by remember { mutableStateOf("Selecciona una fecha y pulsa Consultar.") }
     var intento by remember { mutableIntStateOf(0) }
+    var horaElegida by remember { mutableIntStateOf(0) }
+    var menuHoras by remember { mutableStateOf(false) }
 
     DisposableEffect(fechaConsulta, intento) {
         val fecha = fechaConsulta
@@ -111,6 +113,20 @@ fun ConsultaPorHora() {
         Text(mensaje)
         fechaConsulta?.let { fecha ->
             Text("Resultados del ${fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}")
+            Text("Hora del promedio", style = MaterialTheme.typography.labelLarge)
+            Box {
+                OutlinedButton(onClick = { menuHoras = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text(String.format(Locale.getDefault(), "%02d:00–%02d:59 · Elegir hora ▾", horaElegida, horaElegida))
+                }
+                DropdownMenu(expanded = menuHoras, onDismissRequest = { menuHoras = false }, modifier = Modifier.heightIn(max = 320.dp)) {
+                    (0..23).forEach { hora ->
+                        DropdownMenuItem(
+                            text = { Text(String.format(Locale.getDefault(), "%02d:00–%02d:59", hora, hora)) },
+                            onClick = { horaElegida = hora; menuHoras = false }
+                        )
+                    }
+                }
+            }
             variables.filter { it.clave in seleccionadas }.forEach { variable ->
                 val resultados = promediosPorHora(datos, fecha, variable.clave)
                 Text(variable.nombre, style = MaterialTheme.typography.titleMedium)
@@ -136,10 +152,11 @@ fun ConsultaPorHora() {
                         resultados.forEach { drawCircle(color, 4.dp.toPx(), punto(it)) }
                     }
                     Text("Eje horizontal: 00:00 → 23:00. Los huecos no se interpolan.")
-                    (0..23).forEach { hora ->
-                        val resultado = resultados.find { it.hora == hora }
-                        Text(String.format(Locale.getDefault(), "%02d:00 — %s", hora,
-                            resultado?.let { "${formato(it.promedio)} ${variable.unidad} · ${it.cantidad} lecturas" } ?: "Sin datos"))
+                    val resultado = resultados.find { it.hora == horaElegida }
+                    Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant) {
+                        Text(String.format(Locale.getDefault(), "%02d:00–%02d:59 — %s", horaElegida, horaElegida,
+                            resultado?.let { "${formato(it.promedio)} ${variable.unidad} · ${it.cantidad} lecturas" } ?: "Sin datos"),
+                            Modifier.padding(14.dp))
                     }
                 }
             }
