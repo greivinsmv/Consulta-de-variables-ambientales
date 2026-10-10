@@ -59,3 +59,16 @@ un historial de gran volumen requerirá agregación o paginación.
 Prueba manual: consulta con las lecturas actuales y cambia los valores del DHT22
 en Wokwi para enviar una nueva lectura. Comprueba los extremos contra Firebase.
 Desmarca todas las variables y verifica que el botón queda deshabilitado.
+
+## Apariencia
+
+La navegación inferior ofrece Inicio, Por hora, Por día y Extremos.
+La cabecera usa un degradado azul/violeta y las consultas se presentan en tarjetas
+redondeadas. Inicio destaca temperatura y muestra humedad, punto de rocío y fecha.
+El interruptor **Modo oscuro** guarda la preferencia localmente y la conserva al
+cerrar la app; en el primer inicio usa el tema del sistema. La apariencia no usa
+los colores dinámicos del teléfono para conservar la paleta del proyecto.
+
+Comprobación visual pendiente en el emulador: recorrer las cuatro pantallas,
+activar/desactivar el modo oscuro, reiniciar la app y verificar la preferencia,
+y probar un tamaño de fuente mayor desde la configuración de Android.
