@@ -22,7 +22,7 @@ import java.util.Locale
 fun ConsultaPorDia() {
     var inicio by remember { mutableStateOf(LocalDate.now(zonaConsulta)) }
     var fin by remember { mutableStateOf(LocalDate.now(zonaConsulta)) }
-    var seleccionadas by remember { mutableStateOf(variables.map { it.clave }.toSet()) }
+    var variableElegida by remember { mutableStateOf("temperatura") }
     var rangoConsulta by remember { mutableStateOf<RangoFechas?>(null) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
@@ -82,17 +82,9 @@ fun ConsultaPorDia() {
         Text("Ambas fechas están incluidas. Horario de Costa Rica.")
         SelectorFechaDiaria("Fecha inicial", inicio) { inicio = it; limpiarResultados() }
         SelectorFechaDiaria("Fecha final", fin) { fin = it; limpiarResultados() }
-        variables.forEach { variable ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = variable.clave in seleccionadas, onCheckedChange = { seleccion ->
-                    seleccionadas = if (seleccion) seleccionadas + variable.clave else seleccionadas - variable.clave
-                })
-                Text("${variable.nombre} (${variable.unidad})")
-            }
-        }
+        SelectorVariable(variableElegida) { variableElegida = it }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-        if (seleccionadas.isEmpty()) Text("Selecciona al menos una variable.", color = MaterialTheme.colorScheme.error)
-        Button(enabled = error == null && seleccionadas.isNotEmpty() && !cargando, onClick = {
+        Button(enabled = error == null && !cargando, onClick = {
             rangoConsulta = RangoFechas(inicio, fin)
             intento++
         }) { Text("Consultar promedios diarios") }
@@ -101,7 +93,7 @@ fun ConsultaPorDia() {
         if (!cargando) rangoConsulta?.let { rango ->
             Text("Resultados: ${fechaDiaria(rango.inicio)} al ${fechaDiaria(rango.fin)}")
             Text("Cada promedio usa las lecturas válidas del día, sin rellenar los huecos.")
-            variables.filter { it.clave in seleccionadas }.forEach { variable ->
+            variables.filter { it.clave == variableElegida }.forEach { variable ->
                 val resultados = remember(datos, rango, variable.clave) { promediosDiarios(datos, rango, variable.clave) }
                 val conDatos = resultados.filter { it.promedio != null }
                 Text(variable.nombre, style = MaterialTheme.typography.titleMedium)
@@ -110,7 +102,11 @@ fun ConsultaPorDia() {
                     val valores = conDatos.map { it.promedio!! }
                     Text("Promedio diario mínimo: ${numeroDiario(valores.min())} ${variable.unidad}")
                     Text("Promedio diario máximo: ${numeroDiario(valores.max())} ${variable.unidad}")
-                    GraficoDiario(resultados, variable.unidad)
+                    var mostrarGrafico by remember(rango, variable.clave) { mutableStateOf(false) }
+                    OutlinedButton(onClick = { mostrarGrafico = !mostrarGrafico }) {
+                        Text(if (mostrarGrafico) "Ocultar gráfico" else "Ver gráfico diario")
+                    }
+                    if (mostrarGrafico) GraficoDiario(resultados, variable.unidad)
                 }
                 resultados.forEach { resultado ->
                     Text("${fechaDiaria(resultado.fecha)} — " +

@@ -38,7 +38,7 @@ internal val variables = listOf(
 fun ConsultaPorHora() {
     val contexto = LocalContext.current
     var dia by remember { mutableStateOf(LocalDate.now(zonaConsulta)) }
-    var seleccionadas by remember { mutableStateOf(setOf("temperatura", "humedad", "puntoRocio")) }
+    var variableElegida by remember { mutableStateOf("temperatura") }
     var fechaConsulta by remember { mutableStateOf<LocalDate?>(null) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
@@ -98,16 +98,8 @@ fun ConsultaPorHora() {
             selector.datePicker.maxDate = System.currentTimeMillis()
             selector.show()
         }) { Text(dia.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))) }
-        variables.forEach { variable ->
-            Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                Checkbox(checked = variable.clave in seleccionadas, onCheckedChange = { activar ->
-                    seleccionadas = if (activar) seleccionadas + variable.clave else seleccionadas - variable.clave
-                })
-                Text("${variable.nombre} (${variable.unidad})")
-            }
-        }
-        if (seleccionadas.isEmpty()) Text("Selecciona al menos una variable.")
-        Button(enabled = seleccionadas.isNotEmpty() && !cargando && !dia.isAfter(LocalDate.now(zonaConsulta)),
+        SelectorVariable(variableElegida) { variableElegida = it }
+        Button(enabled = !cargando && !dia.isAfter(LocalDate.now(zonaConsulta)),
             onClick = { fechaConsulta = dia; intento++ }) { Text("Consultar promedios") }
         if (cargando) CircularProgressIndicator()
         Text(mensaje)
@@ -127,12 +119,20 @@ fun ConsultaPorHora() {
                     }
                 }
             }
-            variables.filter { it.clave in seleccionadas }.forEach { variable ->
+            variables.filter { it.clave == variableElegida }.forEach { variable ->
                 val resultados = promediosPorHora(datos, fecha, variable.clave)
                 Text(variable.nombre, style = MaterialTheme.typography.titleMedium)
                 if (resultados.isEmpty()) {
                     Text("Sin datos válidos para esta variable.")
                 } else {
+                    var mostrarGrafico by remember(fecha, variable.clave) { mutableStateOf(false) }
+                    OutlinedButton(onClick = { mostrarGrafico = !mostrarGrafico }) {
+                        Text(if (mostrarGrafico) "Ocultar gráfico" else "Ver gráfico del día")
+                    }
+                    if (mostrarGrafico) {
+                        if (resultados.size == 1) {
+                            Text("Solo hay datos de una hora. Hace falta otra hora con lecturas para mostrar la evolución.")
+                        } else {
                     val color = MaterialTheme.colorScheme.primary
                     val minimo = resultados.minOf { it.promedio }
                     val maximo = resultados.maxOf { it.promedio }
@@ -152,6 +152,8 @@ fun ConsultaPorHora() {
                         resultados.forEach { drawCircle(color, 4.dp.toPx(), punto(it)) }
                     }
                     Text("Eje horizontal: 00:00 → 23:00. Los huecos no se interpolan.")
+                        }
+                    }
                     val resultado = resultados.find { it.hora == horaElegida }
                     Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant) {
                         Text(String.format(Locale.getDefault(), "%02d:00–%02d:59 — %s", horaElegida, horaElegida,
