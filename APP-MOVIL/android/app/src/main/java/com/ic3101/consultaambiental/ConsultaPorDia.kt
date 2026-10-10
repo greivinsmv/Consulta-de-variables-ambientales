@@ -1,16 +1,11 @@
 package com.ic3101.consultaambiental
 
 import android.app.DatePickerDialog
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.firebase.database.*
@@ -78,8 +73,8 @@ fun ConsultaPorDia() {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Promedios diarios", style = MaterialTheme.typography.headlineSmall)
-        Text("Ambas fechas están incluidas. Horario de Costa Rica.")
+        Text("Periodo", style = MaterialTheme.typography.labelLarge)
+        Text("Se incluyen la fecha inicial y la final.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectorFechaDiaria("Fecha inicial", inicio) { inicio = it; limpiarResultados() }
         SelectorFechaDiaria("Fecha final", fin) { fin = it; limpiarResultados() }
         SelectorVariable(variableElegida) { variableElegida = it }
@@ -89,10 +84,10 @@ fun ConsultaPorDia() {
             intento++
         }) { Text("Consultar promedios diarios") }
         if (cargando) CircularProgressIndicator()
-        Text(mensaje)
+        Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (!cargando) rangoConsulta?.let { rango ->
             Text("Resultados: ${fechaDiaria(rango.inicio)} al ${fechaDiaria(rango.fin)}")
-            Text("Cada promedio usa las lecturas válidas del día, sin rellenar los huecos.")
+            Text("Promedio de las lecturas disponibles en cada día.", style = MaterialTheme.typography.bodySmall)
             variables.filter { it.clave == variableElegida }.forEach { variable ->
                 val resultados = remember(datos, rango, variable.clave) { promediosDiarios(datos, rango, variable.clave) }
                 val conDatos = resultados.filter { it.promedio != null }
@@ -106,11 +101,19 @@ fun ConsultaPorDia() {
                     OutlinedButton(onClick = { mostrarGrafico = !mostrarGrafico }) {
                         Text(if (mostrarGrafico) "Ocultar gráfico" else "Ver gráfico diario")
                     }
-                    if (mostrarGrafico) GraficoDiario(resultados, variable.unidad)
+                    if (mostrarGrafico) GraficoDiarioClaro(resultados, variable.unidad)
                 }
                 resultados.forEach { resultado ->
-                    Text("${fechaDiaria(resultado.fecha)} — " +
-                        (resultado.promedio?.let { "${numeroDiario(it)} ${variable.unidad} · ${resultado.cantidad} lecturas" } ?: "Sin datos"))
+                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.small,
+                        modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(fechaDiaria(resultado.fecha), style = MaterialTheme.typography.labelLarge)
+                            Text(resultado.promedio?.let { "${numeroDiario(it)} ${variable.unidad}" } ?: "Sin datos",
+                                style = MaterialTheme.typography.titleLarge)
+                            Text("${resultado.cantidad} lecturas", style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
                 }
             }
         }
@@ -129,36 +132,5 @@ private fun SelectorFechaDiaria(etiqueta: String, fecha: LocalDate, alElegir: (L
     }) { Text("$etiqueta: ${fechaDiaria(fecha)}") }
 }
 
-@Composable
-private fun GraficoDiario(resultados: List<PromedioDia>, unidad: String) {
-    val color = MaterialTheme.colorScheme.primary
-    val eje = MaterialTheme.colorScheme.outline
-    val valores = resultados.mapNotNull { it.promedio }
-    val minimo = minOf(0.0, valores.min())
-    val maximo = maxOf(0.0, valores.max())
-    val amplitud = (maximo - minimo).takeIf { it > 0 } ?: 1.0
-    val ancho = maxOf(280, resultados.size * 48).dp
-    Text("Escala: ${numeroDiario(minimo)} a ${numeroDiario(maximo)} $unidad. Desliza para ver todos los días.")
-    Column(Modifier.horizontalScroll(rememberScrollState())) {
-        Canvas(Modifier.width(ancho).height(160.dp)) {
-            val margen = 8.dp.toPx()
-            fun y(valor: Double) = margen + (size.height - margen * 2) * (1 - (valor - minimo) / amplitud).toFloat()
-            val cero = y(0.0)
-            drawLine(eje, Offset(0f, cero), Offset(size.width, cero), 1.dp.toPx())
-            val espacio = size.width / resultados.size
-            resultados.forEachIndexed { indice, resultado ->
-                resultado.promedio?.let { valor ->
-                    val altura = kotlin.math.abs(y(valor) - cero)
-                    val x = espacio * indice + espacio * 0.2f
-                    if (altura == 0f) drawLine(color, Offset(x, cero), Offset(x + espacio * 0.6f, cero), 3.dp.toPx())
-                    else drawRect(color, Offset(x, minOf(y(valor), cero)), Size(espacio * 0.6f, altura))
-                }
-            }
-        }
-        Row(Modifier.width(ancho)) {
-            resultados.forEach { Text(it.fecha.format(DateTimeFormatter.ofPattern("dd/MM")), Modifier.weight(1f), style = MaterialTheme.typography.labelSmall) }
-        }
-    }
-}
 private fun fechaDiaria(fecha: LocalDate) = fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
 private fun numeroDiario(valor: Double) = String.format(Locale.getDefault(), "%.1f", valor)

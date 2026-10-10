@@ -25,10 +25,10 @@ import com.ic3101.consultaambiental.ui.theme.ConsultaAmbientalTheme
 
 private data class Seccion(val clave: String, val etiqueta: String, val titulo: String, val subtitulo: String)
 private val secciones = listOf(
-    Seccion("actual", "Inicio", "Consulta ambiental", "Observa las últimas lecturas de tu entorno"),
-    Seccion("hora", "Por hora", "Cada hora cuenta", "Explora cómo cambia el ambiente durante el día"),
-    Seccion("dia", "Por día", "Una mirada diaria", "Compara los promedios entre fechas"),
-    Seccion("historico", "Extremos", "Tu historial ambiental", "Encuentra los valores máximos y mínimos")
+    Seccion("actual", "Inicio", "Consulta ambiental", "Última lectura guardada"),
+    Seccion("hora", "Por hora", "Promedios por hora", "Consulta un día y selecciona una hora"),
+    Seccion("dia", "Por día", "Promedios diarios", "Consulta un periodo de fechas"),
+    Seccion("historico", "Extremos", "Máximos y mínimos", "Valores registrados en el historial")
 )
 
 @Composable
@@ -58,13 +58,13 @@ fun InterfazAmbiental() {
                 Column(
                     Modifier.fillMaxWidth().background(
                         Brush.linearGradient(listOf(Color(0xFF5262C7), Color(0xFF9250CE))),
-                        RoundedCornerShape(bottomStart = 32.dp, bottomEnd = 32.dp)
-                    ).padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)
+                        RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 22.dp)
+                    ).padding(20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween) {
                         Surface(color = Color.White.copy(alpha = 0.16f), shape = CircleShape) {
-                            Box(Modifier.padding(12.dp)) { IconoAmbiental("actual", Modifier.size(26.dp), Color.White) }
+                            Box(Modifier.padding(8.dp)) { IconoAmbiental(seccion.clave, Modifier.size(22.dp), Color.White) }
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text("Modo oscuro", color = Color.White, style = MaterialTheme.typography.labelMedium)
@@ -74,11 +74,11 @@ fun InterfazAmbiental() {
                             }, modifier = Modifier.semantics { contentDescription = "Modo oscuro" })
                         }
                     }
-                    Text(seccion.titulo, color = Color.White, style = MaterialTheme.typography.headlineMedium,
+                    Text(seccion.titulo, color = Color.White, style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold)
                     Text(seccion.subtitulo, color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 }
-                Column(Modifier.fillMaxWidth().padding(20.dp)) {
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
                     if (pantalla == "actual") UltimaLectura(Modifier)
                     else Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {

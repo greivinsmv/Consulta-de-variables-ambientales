@@ -87,5 +87,21 @@ Las tres consultas tienen botones de Temperatura, Humedad y Punto de rocío.
 Solo una variable está activa; por defecto es Temperatura. Al cambiarla se
 reutilizan los registros descargados y no se modifica la consulta a Firebase.
 Los gráficos horarios y diarios están plegados bajo **Ver gráfico**.
-Cuando solo hay un promedio horario, se explica que hacen falta datos de otra
-hora para mostrar evolución, sin dibujar una línea o valores inexistentes.
+Cuando solo hay un promedio horario, se muestra un punto con ejes y un aviso
+de que aún no hay evolución para comparar, sin dibujar una línea inexistente.
+
+## Gráficos con ejes
+
+Los gráficos horarios muestran el periodo entre la primera y última hora con datos,
+escala vertical con unidades, cuadrícula y etiquetas de horas. Las horas intermedias
+vacías no se conectan. Con seis puntos o menos se rotulan también los valores.
+Tocar un punto elige la hora en la tarjeta de resultados; el menú sigue permitiendo
+consultar cualquiera de las 24 horas. Una sola hora se representa como punto
+etiquetado con aviso de que aún no hay evolución. Las escalas tienen margen incluso
+si los valores son constantes.
+
+Los gráficos diarios muestran fechas, valores sobre las barras y escala vertical.
+Las barras parten de cero, también para valores negativos. Los días vacíos se
+representan con un guion. Todos los valores siguen disponibles en texto.
+La comprobación de legibilidad, selección por toque y modo oscuro en el emulador
+se realiza además de la compilación y pruebas de cálculo.
