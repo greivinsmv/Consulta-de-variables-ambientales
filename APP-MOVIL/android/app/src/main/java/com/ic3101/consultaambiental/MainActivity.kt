@@ -113,7 +113,7 @@ fun UltimaLectura(modifier: Modifier = Modifier) {
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Consulta ambiental", style = MaterialTheme.typography.headlineMedium)
-        Text("Equipo 01 · Firebase Realtime Database")
+        Text("")
         Text(mensaje)
         Text("Temperatura: ${valor(temperatura, "°C")}")
         Text("Humedad: ${valor(humedad, "%")}")
