@@ -37,6 +37,7 @@ fun ConsultaPorHora() {
     val contexto = LocalContext.current
     var dia by remember { mutableStateOf(LocalDate.now(zonaConsulta)) }
     var variableElegida by remember { mutableStateOf("temperatura") }
+    var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
     var fechaConsulta by remember { mutableStateOf<LocalDate?>(null) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
@@ -44,6 +45,12 @@ fun ConsultaPorHora() {
     var intento by remember { mutableIntStateOf(0) }
     var horaElegida by remember { mutableIntStateOf(0) }
     var menuHoras by remember { mutableStateOf(false) }
+
+    val variableFiltro = variables.first { it.clave == variableElegida }
+    val limitesFiltro = if (filtro.activo) interpretarLimites(filtro.limites.getValue(variableElegida)) else null
+    val filtroValido = !filtro.activo || limitesFiltro != null
+    val filtrados = remember(datos, variableElegida, limitesFiltro) { filtrarLecturas(datos, variableElegida, limitesFiltro) }
+    val datosConsulta = if (filtroValido) filtrados.registros else emptyList()
 
     DisposableEffect(fechaConsulta, intento) {
         val fecha = fechaConsulta
@@ -96,13 +103,15 @@ fun ConsultaPorHora() {
             selector.show()
         }) { Text(dia.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))) }
         SelectorVariable(variableElegida) { variableElegida = it }
-        Button(enabled = !cargando && !dia.isAfter(LocalDate.now(zonaConsulta)),
+        ControlFiltro(variableFiltro, filtro) { filtro = it }
+        Button(enabled = filtroValido && !cargando && !dia.isAfter(LocalDate.now(zonaConsulta)),
             onClick = { fechaConsulta = dia; intento++ }) { Text("Consultar promedios") }
         val variableCsv = variables.first { it.clave == variableElegida }
         val fechaCsv = fechaConsulta
-        val resultadosCsv = fechaCsv?.let { promediosPorHora(datos, it, variableElegida) }.orEmpty()
+        val resultadosCsv = fechaCsv?.let { promediosPorHora(datosConsulta, it, variableElegida) }.orEmpty()
         BotonExportarCsv("promedios_hora_${fechaCsv}_${variableElegida}.csv",
-            if (!cargando && fechaCsv != null && resultadosCsv.isNotEmpty()) csvPorHora(fechaCsv, variableCsv, resultadosCsv) else null)
+            if (!cargando && fechaCsv != null && resultadosCsv.isNotEmpty()) csvPorHora(fechaCsv, variableCsv, resultadosCsv, limitesFiltro) else null)
+        if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
         Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         fechaConsulta?.let { fecha ->
@@ -122,7 +131,7 @@ fun ConsultaPorHora() {
                 }
             }
             variables.filter { it.clave == variableElegida }.forEach { variable ->
-                val resultados = promediosPorHora(datos, fecha, variable.clave)
+                val resultados = promediosPorHora(datosConsulta, fecha, variable.clave)
                 Text(variable.nombre, style = MaterialTheme.typography.titleMedium)
                 if (resultados.isEmpty()) {
                     Text("Sin datos válidos para esta variable.")

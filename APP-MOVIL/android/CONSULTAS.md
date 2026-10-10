@@ -134,3 +134,29 @@ importar desde texto/CSV indicando UTF-8 y separador punto y coma.
 Prueba manual pendiente: guardar CSV de cada consulta, cancelar el selector,
 abrir los archivos y comparar cifras y fechas con los resultados de la app.
 La exportación no sube datos a Firebase ni a otro servicio.
+
+## Filtro de valores atípicos
+
+Las tres consultas tienen **Filtrar valores atípicos**, apagado inicialmente.
+Se filtra por límites configurables e inclusivos de la variable seleccionada;
+no es un detector estadístico ni una validación de que los datos sean reales.
+Los límites iniciales sirven para demostrar el filtro: temperatura -10 a 50 °C,
+humedad 0 a 100 %, punto de rocío -30 a 40 °C. El equipo debe ajustarlos y justificar
+los que use para su conjunto ambiental. Se aceptan punto o coma decimal y negativos.
+
+Cada variable conserva sus límites mientras la pantalla está abierta. Se rechazan
+campos vacíos, valores no numéricos/no finitos y mínimo mayor que máximo.
+El resumen distingue lecturas utilizadas, valores fuera de límites y datos ausentes
+(o no válidos). Un valor atípico de temperatura no excluye la humedad del mismo registro.
+No se escribe ni borra nada de Firebase. El filtro no altera la lectura actual de Inicio.
+
+Promedios, extremos, gráficos y CSV usan el mismo conjunto filtrado. Los CSV con
+filtro activo agregan columnas `filtro`, `limite_inferior` y `limite_superior`.
+Si ninguna lectura pasa el filtro, se muestra ausencia de datos y se deshabilita la
+exportación; no se inventan promedios cero. Al desactivar se recuperan los resultados
+sin el filtro, usando los registros originales descargados.
+
+Prueba manual: consulta una variable con valores de prueba, activa el filtro,
+reduce el límite máximo para excluir una lectura y comprueba cantidades, promedio,
+gráfico y CSV. Desactiva el filtro y verifica que reaparece el resultado original.
+Prueba límites invertidos y cambia de variable para comprobar sus límites propios.
