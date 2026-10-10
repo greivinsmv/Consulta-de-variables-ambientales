@@ -1,12 +1,10 @@
 package com.ic3101.consultaambiental
 
 import android.app.DatePickerDialog
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.firebase.database.*
@@ -85,8 +83,7 @@ fun ConsultaPorHora() {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Promedios por hora", style = MaterialTheme.typography.headlineSmall)
-        Text("Horario de Costa Rica. Cada promedio usa las lecturas disponibles de esa hora.")
+        Text("Fecha", style = MaterialTheme.typography.labelLarge)
         OutlinedButton(onClick = {
             val selector = DatePickerDialog(contexto, { _, anio, mes, numero ->
                 dia = LocalDate.of(anio, mes + 1, numero)
@@ -102,7 +99,7 @@ fun ConsultaPorHora() {
         Button(enabled = !cargando && !dia.isAfter(LocalDate.now(zonaConsulta)),
             onClick = { fechaConsulta = dia; intento++ }) { Text("Consultar promedios") }
         if (cargando) CircularProgressIndicator()
-        Text(mensaje)
+        Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         fechaConsulta?.let { fecha ->
             Text("Resultados del ${fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}")
             Text("Hora del promedio", style = MaterialTheme.typography.labelLarge)
@@ -125,41 +122,23 @@ fun ConsultaPorHora() {
                 if (resultados.isEmpty()) {
                     Text("Sin datos válidos para esta variable.")
                 } else {
+                    val resultado = resultados.find { it.hora == horaElegida }
+                    Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant,
+                        modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(String.format(Locale.getDefault(), "%02d:00–%02d:59", horaElegida, horaElegida),
+                                style = MaterialTheme.typography.labelLarge)
+                            Text(resultado?.let { "${formato(it.promedio)} ${variable.unidad}" } ?: "Sin datos",
+                                style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(resultado?.let { "Promedio de ${it.cantidad} lecturas" } ?: "No hay lecturas en esta hora.",
+                                style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
                     var mostrarGrafico by remember(fecha, variable.clave) { mutableStateOf(false) }
                     OutlinedButton(onClick = { mostrarGrafico = !mostrarGrafico }) {
                         Text(if (mostrarGrafico) "Ocultar gráfico" else "Ver gráfico del día")
                     }
-                    if (mostrarGrafico) {
-                        if (resultados.size == 1) {
-                            Text("Solo hay datos de una hora. Hace falta otra hora con lecturas para mostrar la evolución.")
-                        } else {
-                    val color = MaterialTheme.colorScheme.primary
-                    val minimo = resultados.minOf { it.promedio }
-                    val maximo = resultados.maxOf { it.promedio }
-                    Text("Escala del gráfico: ${formato(minimo)} a ${formato(maximo)} ${variable.unidad}")
-                    Canvas(Modifier.fillMaxWidth().height(140.dp)) {
-                        val margen = 8.dp.toPx()
-                        val ancho = size.width - 2 * margen
-                        val alto = size.height - 2 * margen
-                        fun punto(r: PromedioHora): Offset = Offset(
-                            margen + ancho * r.hora / 23f,
-                            if (maximo == minimo) size.height / 2 else
-                                margen + alto * (1 - (r.promedio - minimo) / (maximo - minimo)).toFloat()
-                        )
-                        resultados.zipWithNext().forEach { (a, b) ->
-                            if (b.hora == a.hora + 1) drawLine(color, punto(a), punto(b), 3.dp.toPx())
-                        }
-                        resultados.forEach { drawCircle(color, 4.dp.toPx(), punto(it)) }
-                    }
-                    Text("Eje horizontal: 00:00 → 23:00. Los huecos no se interpolan.")
-                        }
-                    }
-                    val resultado = resultados.find { it.hora == horaElegida }
-                    Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant) {
-                        Text(String.format(Locale.getDefault(), "%02d:00–%02d:59 — %s", horaElegida, horaElegida,
-                            resultado?.let { "${formato(it.promedio)} ${variable.unidad} · ${it.cantidad} lecturas" } ?: "Sin datos"),
-                            Modifier.padding(14.dp))
-                    }
+                    if (mostrarGrafico) GraficoHorario(resultados, variable.unidad, horaElegida) { horaElegida = it }
                 }
             }
         }

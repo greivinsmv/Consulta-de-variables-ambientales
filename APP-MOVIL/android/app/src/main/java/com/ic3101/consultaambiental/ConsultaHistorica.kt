@@ -1,12 +1,10 @@
 package com.ic3101.consultaambiental
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
 import com.google.firebase.database.*
 import java.time.Instant
@@ -73,14 +71,13 @@ fun ConsultaHistorica() {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Máximos y mínimos históricos", style = MaterialTheme.typography.headlineSmall)
-        Text("Se analizan las lecturas originales de equipo01, no los promedios. Fechas en horario de Costa Rica.")
+        Text("Valores de todas las lecturas guardadas.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectorVariable(variableElegida) { variableElegida = it }
         Button(enabled = !cargando, onClick = { consultar = true; intento++ }) {
-            Text("Consultar máximos y mínimos")
+            Text("Consultar historial")
         }
         if (cargando) CircularProgressIndicator()
-        Text(mensaje)
+        Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (recibido && !cargando) {
             if (sinFecha > 0) Text("Se omitieron $sinFecha registros sin una fecha válida.")
             if (datos.isNotEmpty()) {
@@ -95,42 +92,29 @@ fun ConsultaHistorica() {
                             Text("Sin lecturas válidas para esta variable.")
                         } else {
                             Text("${resumen.cantidad} lecturas válidas analizadas")
-                            Text("Mínimo: ${numeroHistorico(resumen.minimo.valor)} ${variable.unidad}")
-                            Text("Registrado: ${fechaHistorica(resumen.minimo.ts)}")
-                            Text("Máximo: ${numeroHistorico(resumen.maximo.valor)} ${variable.unidad}")
-                            Text("Registrado: ${fechaHistorica(resumen.maximo.ts)}")
+                            Text("Mínimo", style = MaterialTheme.typography.labelLarge)
+                            Text("${numeroHistorico(resumen.minimo.valor)} ${variable.unidad}",
+                                style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(fechaHistorica(resumen.minimo.ts), style = MaterialTheme.typography.bodySmall)
+                            HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                            Text("Máximo", style = MaterialTheme.typography.labelLarge)
+                            Text("${numeroHistorico(resumen.maximo.valor)} ${variable.unidad}",
+                                style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
+                            Text(fechaHistorica(resumen.maximo.ts), style = MaterialTheme.typography.bodySmall)
                             if (resumen.minimo.repeticiones > 1 || resumen.maximo.repeticiones > 1) {
                                 Text("Repeticiones: mínimo ${resumen.minimo.repeticiones}, máximo ${resumen.maximo.repeticiones}. Se muestra la primera fecha de cada extremo.")
                             }
-                            RangoHistorico(resumen)
                             Text("Amplitud: ${numeroHistorico(resumen.maximo.valor - resumen.minimo.valor)} ${variable.unidad}")
                         }
                     }
                 }
             }
-            Text("Los valores ausentes o no numéricos no se sustituyen por cero. Los resultados se actualizan al recibir nuevas lecturas.")
+            Text("Horario de Costa Rica. Los valores se actualizan al recibir nuevas lecturas.",
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
-@Composable
-private fun RangoHistorico(resumen: ResumenHistorico) {
-    val color = MaterialTheme.colorScheme.primary
-    val constante = resumen.minimo.valor == resumen.maximo.valor
-    Canvas(Modifier.fillMaxWidth().height(36.dp)) {
-        val margen = 8.dp.toPx()
-        if (constante) drawCircle(color, 5.dp.toPx(), Offset(size.width / 2, size.height / 2))
-        else {
-            val inicio = Offset(margen, size.height / 2)
-            val fin = Offset(size.width - margen, size.height / 2)
-            drawLine(color, inicio, fin, 3.dp.toPx())
-            drawCircle(color, 5.dp.toPx(), inicio)
-            drawCircle(color, 5.dp.toPx(), fin)
-        }
-    }
-    Text(if (constante) "Todas las lecturas válidas tienen el mismo valor." else
-        "Rango observado: ${numeroHistorico(resumen.minimo.valor)} → ${numeroHistorico(resumen.maximo.valor)}")
-}
 private fun numeroHistorico(valor: Double) = String.format(Locale.getDefault(), "%.1f", valor)
 private fun fechaHistorica(ts: Long) = Instant.ofEpochMilli(ts).atZone(zonaConsulta)
     .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"))

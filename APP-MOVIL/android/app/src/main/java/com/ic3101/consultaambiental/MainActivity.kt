@@ -75,7 +75,7 @@ fun UltimaLectura(modifier: Modifier = Modifier) {
     } ?: "Sin fecha"
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(18.dp)) {
-        Text("Tu ambiente, de un vistazo", style = MaterialTheme.typography.titleLarge)
+        Text("Lectura actual", style = MaterialTheme.typography.titleLarge)
         Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant) {
             Text(mensaje, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.bodyMedium)
         }
