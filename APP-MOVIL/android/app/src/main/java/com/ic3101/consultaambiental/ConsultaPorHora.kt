@@ -27,8 +27,8 @@ internal fun promediosPorHora(registros: List<RegistroAmbiental>, dia: LocalDate
             PromedioHora(hora, grupo.map { it.valores.getValue(variable) }.average(), grupo.size)
         }
 
-private data class Variable(val clave: String, val nombre: String, val unidad: String)
-private val variables = listOf(
+internal data class Variable(val clave: String, val nombre: String, val unidad: String)
+internal val variables = listOf(
     Variable("temperatura", "Temperatura", "°C"),
     Variable("humedad", "Humedad", "%"),
     Variable("puntoRocio", "Punto de rocío", "°C")
