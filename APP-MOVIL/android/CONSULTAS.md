@@ -41,3 +41,21 @@ con días vacíos, y un rango invertido (el botón debe quedar deshabilitado).
 Desmarca todas las variables y comprueba que no se habilita la consulta.
 La comprobación con varios días poblados requiere un historial en Firebase;
 la app no genera ni carga datos sintéticos.
+
+## Máximos y mínimos históricos
+
+Selecciona variables y pulsa **Consultar máximos y mínimos**. Se analizan las
+lecturas originales de todo `lecturas/equipo01`, con fecha y hora de Costa Rica,
+por separado para cada variable. Los registros sin fecha numérica válida se
+omiten con aviso; los valores ausentes y no finitos no cuentan para esa variable.
+Se muestran mínimo, máximo, fechas, cantidad válida y amplitud del rango.
+Cuando hay empates se muestra la fecha más antigua y el número de repeticiones.
+Una sola lectura puede ser a la vez mínimo y máximo.
+
+Esta consulta descarga el historial completo y escucha nuevos cambios mientras
+la pantalla está abierta. Es adecuada para el conjunto de muestra del proyecto;
+un historial de gran volumen requerirá agregación o paginación.
+
+Prueba manual: consulta con las lecturas actuales y cambia los valores del DHT22
+en Wokwi para enviar una nueva lectura. Comprueba los extremos contra Firebase.
+Desmarca todas las variables y verifica que el botón queda deshabilitado.
