@@ -18,6 +18,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ic3101.consultaambiental.ui.theme.ConsultaAmbientalTheme
@@ -31,7 +34,7 @@ private val secciones = listOf(
 )
 
 @Composable
-fun InterfazAmbiental() {
+fun InterfazAmbiental(ciclo: Lifecycle) {
     val contexto = LocalContext.current
     val preferencias = remember { contexto.getSharedPreferences("apariencia", Context.MODE_PRIVATE) }
     val oscuroSistema = isSystemInDarkTheme()
@@ -47,6 +50,44 @@ fun InterfazAmbiental() {
     LaunchedEffect(repositorioClima) {
         historial = repositorioClima.leerGuardado()
         leyendoCopia = false
+    }
+    var climaActual by remember { mutableStateOf<ClimaActual?>(null) }
+    var cargandoActual by remember { mutableStateOf(false) }
+    var mensajeActual by remember { mutableStateOf<String?>(null) }
+    var ultimoIntentoActual by remember { mutableLongStateOf(0L) }
+    var visible by remember(ciclo) { mutableStateOf(ciclo.currentState.isAtLeast(Lifecycle.State.STARTED)) }
+    DisposableEffect(ciclo) {
+        val observador = LifecycleEventObserver { _, _ -> visible = ciclo.currentState.isAtLeast(Lifecycle.State.STARTED) }
+        ciclo.addObserver(observador)
+        onDispose { ciclo.removeObserver(observador) }
+    }
+    fun actualizarActual() {
+        if (cargandoActual) return
+        cargandoActual = true
+        ultimoIntentoActual = System.currentTimeMillis()
+        mensajeActual = null
+        alcance.launch {
+            try {
+                climaActual = descargarClimaActual()
+            } catch (cancelacion: kotlinx.coroutines.CancellationException) {
+                throw cancelacion
+            } catch (error: Exception) {
+                android.util.Log.w("ClimaSantaClara", "No se pudo actualizar el clima actual", error)
+                mensajeActual = "No se pudo actualizar el clima. Comprueba la conexión e intenta nuevamente." +
+                    if (climaActual != null) " Se muestra el último dato recibido." else ""
+            } finally { cargandoActual = false }
+        }
+    }
+    LaunchedEffect(fuente, pantalla, visible) {
+        if (fuente == "clima" && pantalla == "actual" && visible) {
+            while (true) {
+                if (ultimoIntentoActual == 0L || System.currentTimeMillis() - ultimoIntentoActual >= intervaloConsultaClima)
+                    actualizarActual()
+                val espera = (intervaloConsultaClima - (System.currentTimeMillis() - ultimoIntentoActual))
+                    .coerceIn(1000L, intervaloConsultaClima)
+                delay(espera)
+            }
+        }
     }
     val seccion = secciones.first { it.clave == pantalla }
     ConsultaAmbientalTheme(darkTheme = oscuro) {
@@ -83,13 +124,15 @@ fun InterfazAmbiental() {
                     }
                     Text(seccion.titulo, color = Color.White, style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold)
-                    Text(if (fuente == "clima" && pantalla == "actual") "Historial meteorológico de Santa Clara" else seccion.subtitulo, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    Text(if (fuente == "clima" && pantalla == "actual") "Condiciones actuales de Santa Clara" else seccion.subtitulo, color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 }
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     SelectorFuenteDatos(fuente) {
                         fuente = it
                         preferencias.edit().putString("fuente", it).apply()
                     }
+                    if (fuente == "clima" && pantalla == "actual")
+                        VistaClimaActual(climaActual, cargandoActual, mensajeActual) { actualizarActual() }
                     if (fuente == "clima") PanelClima(historial, cargandoClima || leyendoCopia, mensajeClima) {
                         alcance.launch {
                             cargandoClima = true
@@ -110,8 +153,8 @@ fun InterfazAmbiental() {
                     }
                     val datosClima = if (fuente == "clima") historial else null
                     if (fuente == "esp32" || datosClima != null) key(fuente, datosClima?.rango) {
-                        if (pantalla == "actual") UltimaLectura(Modifier, datosClima)
-                        else Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                        if (pantalla == "actual" && fuente == "esp32") UltimaLectura(Modifier)
+                        else if (pantalla != "actual") Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
                             Column(Modifier.padding(18.dp)) {
                                 when (pantalla) {

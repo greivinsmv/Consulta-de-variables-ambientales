@@ -193,3 +193,24 @@ Comprobación en Android:
 
 La compilación y las pruebas con respuestas de ejemplo no sustituyen la prueba
 contra el servicio en vivo ni la comprobación visual en Android.
+
+## Clima actual en Inicio
+
+La fuente Santa Clara consulta `current=temperature_2m,relative_humidity_2m,dew_point_2m`
+en Open-Meteo. Se carga al entrar en Inicio, sujeto al intervalo de consulta, y se
+actualiza automáticamente cada quince minutos mientras la pantalla está visible.
+El botón **Actualizar ahora** permite consultar antes del siguiente intervalo.
+El ciclo de vida de Android detiene las consultas periódicas al enviar la app al
+fondo, y cambiar de pantalla o fuente también detiene esa programación.
+Una solicitud que ya está en curso puede finalizar y conservar su respuesta.
+
+El dato actual conserva la fecha del modelo y la hora de consulta por separado,
+ambas en horario de Costa Rica. Los valores ausentes se muestran como Sin dato.
+Si falla la actualización se conserva el último resultado de la sesión y aparece
+un aviso. Los datos de más de treinta minutos se identifican como anteriores.
+La lectura actual no se incorpora al archivo histórico ni a sus consultas o CSV.
+
+Comprobación en Android: seleccionar Santa Clara en Inicio, verificar las tres
+variables y fechas, pulsar Actualizar ahora, probar sin conexión y recuperar la
+conexión. El clima actual debe aparecer aunque aún no se haya descargado el historial.
+Verificar que Por hora, Por día y Extremos siguen usando el periodo histórico.
