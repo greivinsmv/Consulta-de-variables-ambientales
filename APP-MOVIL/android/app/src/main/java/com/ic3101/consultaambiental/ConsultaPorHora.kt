@@ -33,9 +33,9 @@ internal val variables = listOf(
 )
 
 @Composable
-fun ConsultaPorHora() {
+internal fun ConsultaPorHora(historial: HistorialClima? = null) {
     val contexto = LocalContext.current
-    var dia by remember { mutableStateOf(LocalDate.now(zonaConsulta)) }
+    var dia by remember { mutableStateOf(historial?.rango?.fin ?: LocalDate.now(zonaConsulta)) }
     var variableElegida by remember { mutableStateOf("temperatura") }
     var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
     var fechaConsulta by remember { mutableStateOf<LocalDate?>(null) }
@@ -52,9 +52,15 @@ fun ConsultaPorHora() {
     val filtrados = remember(datos, variableElegida, limitesFiltro) { filtrarLecturas(datos, variableElegida, limitesFiltro) }
     val datosConsulta = if (filtroValido) filtrados.registros else emptyList()
 
-    DisposableEffect(fechaConsulta, intento) {
+    DisposableEffect(fechaConsulta, intento, historial) {
         val fecha = fechaConsulta
         if (fecha == null) {
+            onDispose { }
+        } else if (historial != null) {
+            datos = historial.registros.filter { Instant.ofEpochMilli(it.ts).atZone(zonaConsulta).toLocalDate() == fecha }
+            cargando = false
+            mensaje = if (datos.isEmpty()) "Sin datos. El historial descargado cubre ${historial.rango.inicio} al ${historial.rango.fin}."
+                else "${datos.size} datos horarios de Open-Meteo."
             onDispose { }
         } else {
             cargando = true
@@ -109,8 +115,8 @@ fun ConsultaPorHora() {
         val variableCsv = variables.first { it.clave == variableElegida }
         val fechaCsv = fechaConsulta
         val resultadosCsv = fechaCsv?.let { promediosPorHora(datosConsulta, it, variableElegida) }.orEmpty()
-        BotonExportarCsv("promedios_hora_${fechaCsv}_${variableElegida}.csv",
-            if (!cargando && fechaCsv != null && resultadosCsv.isNotEmpty()) csvPorHora(fechaCsv, variableCsv, resultadosCsv, limitesFiltro) else null)
+        BotonExportarCsv("promedios_hora_${fechaCsv}_${variableElegida}${if (historial != null) "_santa_clara" else ""}.csv",
+            if (!cargando && fechaCsv != null && resultadosCsv.isNotEmpty()) csvPorHora(fechaCsv, variableCsv, resultadosCsv, limitesFiltro, historial?.origen) else null)
         if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
         Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

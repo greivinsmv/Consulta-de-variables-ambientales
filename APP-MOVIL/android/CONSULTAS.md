@@ -1,7 +1,7 @@
 # Consultas ambientales
 
 La app permite ver la lectura actual y consultar promedios por hora o por día.
-La navegación superior se desplaza horizontalmente si no caben los botones.
+La navegación inferior ofrece Inicio, Por hora, Por día y Extremos.
 
 ## Promedios diarios
 
@@ -39,8 +39,7 @@ Desde la carpeta `APP-MOVIL/android`:
 Para la prueba manual, consulta un día con registros, un rango que lo incluya junto
 con días vacíos, y un rango invertido (el botón debe quedar deshabilitado).
 Cambia de variable y comprueba que se muestran sus propios resultados.
-La comprobación con varios días poblados requiere un historial en Firebase;
-la app no genera ni carga datos sintéticos.
+Para comprobar varios días, selecciona la fuente Santa Clara y descarga el historial de Open-Meteo, o utiliza un historial en Firebase.
 
 ## Máximos y mínimos históricos
 
@@ -160,3 +159,37 @@ Prueba manual: consulta una variable con valores de prueba, activa el filtro,
 reduce el límite máximo para excluir una lectura y comprueba cantidades, promedio,
 gráfico y CSV. Desactiva el filtro y verifica que reaparece el resultado original.
 Prueba límites invertidos y cambia de variable para comprobar sus límites propios.
+
+## Fuente meteorológica: Santa Clara
+
+**Fuente de datos** permite elegir ESP32 (Firebase) o Santa Clara (Open-Meteo).
+La segunda descarga diez días completos anteriores al día actual de Costa Rica,
+con un dato por hora de temperatura, humedad y punto de rocío para las coordenadas
+aproximadas 10.36, −84.51. Utiliza datos modelados del endpoint `/v1/forecast`
+con fechas de inicio y fin; excluye hoy y no incorpora pronósticos futuros.
+
+Los tiempos Unix se convierten de segundos a milisegundos sin sumar de nuevo el
+desplazamiento horario. Se valida que la respuesta contenga 240 horas ordenadas y
+las unidades esperadas; los valores nulos se omiten por variable. Las consultas,
+los filtros y los gráficos reutilizan los cálculos existentes. Los CSV agregan
+fuente, ubicación, coordenadas solicitadas, URL del proveedor, licencia y tratamiento.
+
+La respuesta válida se conserva en un archivo privado con escritura atómica y se
+recupera al iniciar. Las consultas del periodo guardado funcionan sin conexión.
+Un fallo de descarga conserva la copia anterior y muestra un aviso. Cambiar de
+fuente limpia la consulta visible; la aplicación utiliza únicamente la fuente elegida.
+La fuente seleccionada se conserva entre sesiones. La descarga se almacena en el teléfono. Datos de Open-Meteo bajo CC BY 4.0,
+con enlaces de atribución en la app y documentación.
+
+Comprobación en Android:
+
+1. Seleccionar Santa Clara, cargar los diez días y verificar 240 datos horarios.
+2. Consultar Por día con el rango propuesto: diez días y 24 datos por día si todos
+   los valores están disponibles. Revisar Por hora y Extremos en las tres variables.
+3. Activar el filtro y contrastar resultados, gráficos y columnas de origen del CSV.
+4. Cerrar la app, desconectar internet, abrir de nuevo y consultar el periodo guardado.
+5. Intentar actualizar sin conexión: debe conservarse la copia anterior.
+6. Volver a ESP32 y verificar las lecturas de Firebase con Wokwi.
+
+La compilación y las pruebas con respuestas de ejemplo no sustituyen la prueba
+contra el servicio en vivo ni la comprobación visual en Android.

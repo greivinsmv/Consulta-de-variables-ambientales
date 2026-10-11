@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ic3101.consultaambiental.ui.theme.ConsultaAmbientalTheme
@@ -36,6 +37,17 @@ fun InterfazAmbiental() {
     val oscuroSistema = isSystemInDarkTheme()
     var oscuro by rememberSaveable { mutableStateOf(preferencias.getBoolean("oscuro", oscuroSistema)) }
     var pantalla by rememberSaveable { mutableStateOf("actual") }
+    var fuente by rememberSaveable { mutableStateOf(preferencias.getString("fuente", "esp32") ?: "esp32") }
+    var historial by remember { mutableStateOf<HistorialClima?>(null) }
+    var cargandoClima by remember { mutableStateOf(false) }
+    var mensajeClima by remember { mutableStateOf<String?>(null) }
+    var leyendoCopia by remember { mutableStateOf(true) }
+    val repositorioClima = remember { RepositorioClima(contexto.filesDir) }
+    val alcance = rememberCoroutineScope()
+    LaunchedEffect(repositorioClima) {
+        historial = repositorioClima.leerGuardado()
+        leyendoCopia = false
+    }
     val seccion = secciones.first { it.clave == pantalla }
     ConsultaAmbientalTheme(darkTheme = oscuro) {
         Scaffold(
@@ -51,7 +63,7 @@ fun InterfazAmbiental() {
             }
         ) { padding ->
             val scroll = rememberScrollState()
-            LaunchedEffect(pantalla) { scroll.scrollTo(0) }
+            LaunchedEffect(pantalla, fuente) { scroll.scrollTo(0) }
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll)) {
                 Column(
                     Modifier.fillMaxWidth().background(
@@ -71,17 +83,42 @@ fun InterfazAmbiental() {
                     }
                     Text(seccion.titulo, color = Color.White, style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold)
-                    Text(seccion.subtitulo, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    Text(if (fuente == "clima" && pantalla == "actual") "Historial meteorológico de Santa Clara" else seccion.subtitulo, color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 }
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    if (pantalla == "actual") UltimaLectura(Modifier)
-                    else Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-                        Column(Modifier.padding(18.dp)) {
-                            when (pantalla) {
-                                "hora" -> ConsultaPorHora()
-                                "dia" -> ConsultaPorDia()
-                                else -> ConsultaHistorica()
+                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    SelectorFuenteDatos(fuente) {
+                        fuente = it
+                        preferencias.edit().putString("fuente", it).apply()
+                    }
+                    if (fuente == "clima") PanelClima(historial, cargandoClima || leyendoCopia, mensajeClima) {
+                        alcance.launch {
+                            cargandoClima = true
+                            mensajeClima = null
+                            try {
+                                historial = repositorioClima.descargar()
+                                mensajeClima = "Historial actualizado y guardado en el teléfono."
+                            } catch (cancelacion: kotlinx.coroutines.CancellationException) {
+                                throw cancelacion
+                            } catch (error: Exception) {
+                                android.util.Log.w("ClimaSantaClara", "No se pudo actualizar el historial meteorológico", error)
+                                mensajeClima = (if (error is java.io.IOException)
+                                    "No se pudo descargar o guardar el clima. Comprueba la conexión e intenta nuevamente."
+                                    else "La respuesta del clima no contiene el historial esperado. Intenta nuevamente más tarde.") +
+                                    if (historial != null) " Se conserva el historial guardado." else ""
+                            } finally { cargandoClima = false }
+                        }
+                    }
+                    val datosClima = if (fuente == "clima") historial else null
+                    if (fuente == "esp32" || datosClima != null) key(fuente, datosClima?.rango) {
+                        if (pantalla == "actual") UltimaLectura(Modifier, datosClima)
+                        else Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
+                            Column(Modifier.padding(18.dp)) {
+                                when (pantalla) {
+                                    "hora" -> ConsultaPorHora(datosClima)
+                                    "dia" -> ConsultaPorDia(datosClima)
+                                    else -> ConsultaHistorica(datosClima)
+                                }
                             }
                         }
                     }
@@ -92,7 +129,7 @@ fun InterfazAmbiental() {
 }
 
 @Composable
-fun TarjetaTemperatura(valor: String) {
+fun TarjetaTemperatura(valor: String, detalle: String = "Última lectura registrada") {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
@@ -102,7 +139,7 @@ fun TarjetaTemperatura(valor: String) {
             }
             Text("Temperatura", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium)
             Text(valor, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-            Text("Última lectura registrada", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(detalle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
