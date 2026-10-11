@@ -49,16 +49,14 @@ internal fun ControlFiltro(variable: Variable, configuracion: ConfiguracionFiltr
             Switch(checked = configuracion.activo, onCheckedChange = { alCambiar(configuracion.copy(activo = it)) })
         }
         if (configuracion.activo) {
-            Text("Se omiten valores fuera de estos límites (${variable.unidad}). Puedes ajustarlos.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedTextField(value = texto.minimo, onValueChange = {
                     alCambiar(configuracion.copy(limites = configuracion.limites + (variable.clave to texto.copy(minimo = it))))
-                }, label = { Text("Mínimo") }, modifier = Modifier.weight(1f), singleLine = true,
+                }, label = { Text("Mínimo (${variable.unidad})") }, modifier = Modifier.weight(1f), singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
                 OutlinedTextField(value = texto.maximo, onValueChange = {
                     alCambiar(configuracion.copy(limites = configuracion.limites + (variable.clave to texto.copy(maximo = it))))
-                }, label = { Text("Máximo") }, modifier = Modifier.weight(1f), singleLine = true,
+                }, label = { Text("Máximo (${variable.unidad})") }, modifier = Modifier.weight(1f), singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text))
             }
             if (interpretarLimites(texto) == null) Text("Introduce dos números. El mínimo no puede superar al máximo.",
@@ -69,6 +67,9 @@ internal fun ControlFiltro(variable: Variable, configuracion: ConfiguracionFiltr
 
 @Composable
 internal fun ResumenFiltro(datos: DatosFiltrados, activo: Boolean) {
-    if (activo) Text("${datos.utilizados} lecturas utilizadas · ${datos.excluidos} fuera de límites · ${datos.sinValor} sin valor válido",
-        style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    if (activo) {
+        val resumen = "${datos.utilizados} utilizadas · ${datos.excluidos} excluidas" +
+            if (datos.sinValor > 0) " · ${datos.sinValor} sin valor" else ""
+        Text(resumen, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
 }

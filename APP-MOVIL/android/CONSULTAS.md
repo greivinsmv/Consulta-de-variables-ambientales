@@ -179,7 +179,7 @@ recupera al iniciar. Las consultas del periodo guardado funcionan sin conexión.
 Un fallo de descarga conserva la copia anterior y muestra un aviso. Cambiar de
 fuente limpia la consulta visible; la aplicación utiliza únicamente la fuente elegida.
 La fuente seleccionada se conserva entre sesiones. La descarga se almacena en el teléfono. Datos de Open-Meteo bajo CC BY 4.0,
-con enlaces de atribución en la app y documentación.
+con enlaces de atribución en Información y en la documentación.
 
 Comprobación en Android:
 
@@ -205,7 +205,8 @@ fondo, y cambiar de pantalla o fuente también detiene esa programación.
 Una solicitud que ya está en curso puede finalizar y conservar su respuesta.
 
 El dato actual conserva la fecha del modelo y la hora de consulta por separado,
-ambas en horario de Costa Rica. Los valores ausentes se muestran como Sin dato.
+ambas en horario de Costa Rica. Inicio muestra la fecha del dato y el apartado
+Información permite consultar la hora de la última consulta. Los valores ausentes se muestran como Sin dato.
 Si falla la actualización se conserva el último resultado de la sesión y aparece
 un aviso. Los datos de más de treinta minutos se identifican como anteriores.
 La lectura actual no se incorpora al archivo histórico ni a sus consultas o CSV.
@@ -214,3 +215,22 @@ Comprobación en Android: seleccionar Santa Clara en Inicio, verificar las tres
 variables y fechas, pulsar Actualizar ahora, probar sin conexión y recuperar la
 conexión. El clima actual debe aparecer aunque aún no se haya descargado el historial.
 Verificar que Por hora, Por día y Extremos siguen usando el periodo histórico.
+
+## Interfaz e Información
+
+El botón ⓘ de la cabecera abre Información a pantalla completa sobre la vista
+actual. Allí se reúnen fuentes, ubicación, horario, frecuencia de actualización,
+detalles de la descarga, cálculos, filtros, exportación y créditos/licencia.
+Cerrar con Volver o Atrás mantiene la consulta y su selección.
+La actualización periódica del clima se pausa mientras Información está abierta.
+
+Las vistas principales conservan los controles, valores, cantidades y avisos
+necesarios; no repiten los créditos ni las explicaciones técnicas. Se omiten los
+mensajes de éxito que duplican resultados. El historial se gestiona en Inicio;
+cuando falta una descarga también aparece el control de carga en las consultas.
+
+Comprobación visual: recorrer las cuatro pantallas en ambos temas, abrir y cerrar
+Información desde una consulta con fecha, hora, variable, filtro y gráfico elegidos,
+y comprobar que la selección se conserva. Revisar los enlaces de Open-Meteo y
+CC BY 4.0, el botón Atrás y la lectura con un tamaño de fuente mayor. Verificar
+que se mantienen los avisos sin conexión, Sin datos y datos antiguos.

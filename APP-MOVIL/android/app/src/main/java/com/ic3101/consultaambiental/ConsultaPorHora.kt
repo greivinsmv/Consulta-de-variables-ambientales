@@ -41,7 +41,7 @@ internal fun ConsultaPorHora(historial: HistorialClima? = null) {
     var fechaConsulta by remember { mutableStateOf<LocalDate?>(null) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
-    var mensaje by remember { mutableStateOf("Selecciona una fecha y pulsa Consultar.") }
+    var mensaje by remember { mutableStateOf("") }
     var intento by remember { mutableIntStateOf(0) }
     var horaElegida by remember { mutableIntStateOf(0) }
     var menuHoras by remember { mutableStateOf(false) }
@@ -60,12 +60,12 @@ internal fun ConsultaPorHora(historial: HistorialClima? = null) {
             datos = historial.registros.filter { Instant.ofEpochMilli(it.ts).atZone(zonaConsulta).toLocalDate() == fecha }
             cargando = false
             mensaje = if (datos.isEmpty()) "Sin datos. El historial descargado cubre ${historial.rango.inicio} al ${historial.rango.fin}."
-                else "${datos.size} datos horarios de Open-Meteo."
+                else ""
             onDispose { }
         } else {
             cargando = true
             datos = emptyList()
-            mensaje = "Cargando…"
+            mensaje = ""
             val inicio = fecha.atStartOfDay(zonaConsulta).toInstant().toEpochMilli()
             val fin = fecha.plusDays(1).atStartOfDay(zonaConsulta).toInstant().toEpochMilli()
             val consulta = FirebaseDatabase.getInstance("https://proyecto-iot-fa353-default-rtdb.firebaseio.com")
@@ -82,7 +82,7 @@ internal fun ConsultaPorHora(historial: HistorialClima? = null) {
                         RegistroAmbiental(ts, valores)
                     }
                     cargando = false
-                    mensaje = if (datos.isEmpty()) "No hay lecturas para este día." else "${datos.size} registros recibidos."
+                    mensaje = if (datos.isEmpty()) "No hay lecturas para este día." else ""
                 }
                 override fun onCancelled(error: DatabaseError) {
                     datos = emptyList()
@@ -103,7 +103,7 @@ internal fun ConsultaPorHora(historial: HistorialClima? = null) {
                 fechaConsulta = null
                 datos = emptyList()
                 cargando = false
-                mensaje = "Pulsa Consultar para cargar la fecha elegida."
+                mensaje = ""
             }, dia.year, dia.monthValue - 1, dia.dayOfMonth)
             selector.datePicker.maxDate = System.currentTimeMillis()
             selector.show()
@@ -119,7 +119,7 @@ internal fun ConsultaPorHora(historial: HistorialClima? = null) {
             if (!cargando && fechaCsv != null && resultadosCsv.isNotEmpty()) csvPorHora(fechaCsv, variableCsv, resultadosCsv, limitesFiltro, historial?.origen) else null)
         if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
-        Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (mensaje.isNotBlank()) Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         fechaConsulta?.let { fecha ->
             Text("Resultados del ${fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}")
             Text("Hora del promedio", style = MaterialTheme.typography.labelLarge)

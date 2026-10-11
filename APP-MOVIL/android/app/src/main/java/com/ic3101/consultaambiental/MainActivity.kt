@@ -76,8 +76,8 @@ internal fun UltimaLectura(modifier: Modifier = Modifier) {
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Text("Lectura actual", style = MaterialTheme.typography.titleLarge)
-        Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant) {
-            Text(mensaje, Modifier.padding(horizontal = 14.dp, vertical = 10.dp), style = MaterialTheme.typography.bodyMedium)
+        if (mensaje != "Último registro recibido") {
+            Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         TarjetaTemperatura(valor(temperatura, "°C"))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -88,10 +88,7 @@ internal fun UltimaLectura(modifier: Modifier = Modifier) {
             Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Fecha de lectura", style = MaterialTheme.typography.titleSmall)
                 Text(fechaTexto, style = MaterialTheme.typography.bodyLarge)
-                Text("Horario de Costa Rica", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
             }
         }
-        Text("El punto de rocío se calcula a partir de temperatura y humedad.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
     }
 }

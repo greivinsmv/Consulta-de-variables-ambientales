@@ -17,6 +17,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.lifecycle.Lifecycle
@@ -25,12 +27,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ic3101.consultaambiental.ui.theme.ConsultaAmbientalTheme
 
-private data class Seccion(val clave: String, val etiqueta: String, val titulo: String, val subtitulo: String)
+private data class Seccion(val clave: String, val etiqueta: String, val titulo: String)
 private val secciones = listOf(
-    Seccion("actual", "Inicio", "Consulta ambiental", "Última lectura guardada"),
-    Seccion("hora", "Por hora", "Promedios por hora", "Consulta un día y selecciona una hora"),
-    Seccion("dia", "Por día", "Promedios diarios", "Consulta un periodo de fechas"),
-    Seccion("historico", "Extremos", "Máximos y mínimos", "Valores registrados en el historial")
+    Seccion("actual", "Inicio", "Consulta ambiental"),
+    Seccion("hora", "Por hora", "Promedios por hora"),
+    Seccion("dia", "Por día", "Promedios diarios"),
+    Seccion("historico", "Extremos", "Máximos y mínimos")
 )
 
 @Composable
@@ -39,6 +41,7 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
     val preferencias = remember { contexto.getSharedPreferences("apariencia", Context.MODE_PRIVATE) }
     val oscuroSistema = isSystemInDarkTheme()
     var oscuro by rememberSaveable { mutableStateOf(preferencias.getBoolean("oscuro", oscuroSistema)) }
+    var mostrarInfo by rememberSaveable { mutableStateOf(false) }
     var pantalla by rememberSaveable { mutableStateOf("actual") }
     var fuente by rememberSaveable { mutableStateOf(preferencias.getString("fuente", "esp32") ?: "esp32") }
     var historial by remember { mutableStateOf<HistorialClima?>(null) }
@@ -78,8 +81,8 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
             } finally { cargandoActual = false }
         }
     }
-    LaunchedEffect(fuente, pantalla, visible) {
-        if (fuente == "clima" && pantalla == "actual" && visible) {
+    LaunchedEffect(fuente, pantalla, visible, mostrarInfo) {
+        if (fuente == "clima" && pantalla == "actual" && visible && !mostrarInfo) {
             while (true) {
                 if (ultimoIntentoActual == 0L || System.currentTimeMillis() - ultimoIntentoActual >= intervaloConsultaClima)
                     actualizarActual()
@@ -91,6 +94,7 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
     }
     val seccion = secciones.first { it.clave == pantalla }
     ConsultaAmbientalTheme(darkTheme = oscuro) {
+        if (mostrarInfo) InformacionApp(historial, climaActual) { mostrarInfo = false }
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
@@ -117,14 +121,20 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
                         Surface(color = Color.White.copy(alpha = 0.16f), shape = CircleShape) {
                             Box(Modifier.padding(8.dp)) { IconoAmbiental(seccion.clave, Modifier.size(22.dp), Color.White) }
                         }
-                        SelectorTema(oscuro = oscuro, alCambiar = {
-                            oscuro = it
-                            preferencias.edit().putBoolean("oscuro", it).apply()
-                        })
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            SelectorTema(oscuro = oscuro, alCambiar = {
+                                oscuro = it
+                                preferencias.edit().putBoolean("oscuro", it).apply()
+                            })
+                            IconButton(onClick = { mostrarInfo = true },
+                                modifier = Modifier.semantics { contentDescription = "Información de la aplicación" }) {
+                                IconoAmbiental("info", Modifier.size(24.dp), Color.White)
+                            }
+                        }
                     }
                     Text(seccion.titulo, color = Color.White, style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold)
-                    Text(if (fuente == "clima" && pantalla == "actual") "Condiciones actuales de Santa Clara" else seccion.subtitulo, color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    Text(if (fuente == "clima") "Santa Clara, San Carlos" else "Lecturas del ESP32", color = Color.White, style = MaterialTheme.typography.bodyMedium)
                 }
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     SelectorFuenteDatos(fuente) {
@@ -133,13 +143,13 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
                     }
                     if (fuente == "clima" && pantalla == "actual")
                         VistaClimaActual(climaActual, cargandoActual, mensajeActual) { actualizarActual() }
-                    if (fuente == "clima") PanelClima(historial, cargandoClima || leyendoCopia, mensajeClima) {
+                    if (fuente == "clima" && (pantalla == "actual" || historial == null)) PanelClima(historial, cargandoClima || leyendoCopia, mensajeClima) {
                         alcance.launch {
                             cargandoClima = true
                             mensajeClima = null
                             try {
                                 historial = repositorioClima.descargar()
-                                mensajeClima = "Historial actualizado y guardado en el teléfono."
+                                mensajeClima = null
                             } catch (cancelacion: kotlinx.coroutines.CancellationException) {
                                 throw cancelacion
                             } catch (error: Exception) {
@@ -172,7 +182,7 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
 }
 
 @Composable
-fun TarjetaTemperatura(valor: String, detalle: String = "Última lectura registrada") {
+fun TarjetaTemperatura(valor: String) {
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(Modifier.fillMaxWidth().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally,
@@ -182,7 +192,6 @@ fun TarjetaTemperatura(valor: String, detalle: String = "Última lectura registr
             }
             Text("Temperatura", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleMedium)
             Text(valor, fontSize = 40.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.primary)
-            Text(detalle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -206,6 +215,11 @@ private fun IconoAmbiental(tipo: String, modifier: Modifier, color: Color = Mate
         fun punto(x: Float, y: Float) = Offset(size.width * x, size.height * y)
         fun linea(x1: Float, y1: Float, x2: Float, y2: Float) = drawLine(color, punto(x1,y1), punto(x2,y2), 2.dp.toPx())
         when (tipo) {
+            "info" -> {
+                drawCircle(color, size.minDimension * .42f, punto(.5f,.5f), style = Stroke(2.dp.toPx()))
+                drawCircle(color, 1.5.dp.toPx(), punto(.5f,.3f))
+                linea(.5f,.45f,.5f,.73f)
+            }
             "actual" -> {
                 val casa = Path().apply {
                     moveTo(size.width * .12f, size.height * .45f); lineTo(size.width * .5f, size.height * .12f)
