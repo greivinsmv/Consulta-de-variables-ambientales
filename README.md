@@ -1,11 +1,12 @@
 # Consulta Ambiental
 
-Aplicación Android para consultar y analizar datos ambientales almacenados en Firebase Realtime Database. Integra lecturas de un ESP32 con sensor DHT22 simulado en Wokwi y permite explorar temperatura, humedad relativa y punto de rocío mediante consultas temporales, gráficos y exportación de resultados.
+Aplicación Android para consultar y analizar datos ambientales procedentes de Firebase Realtime Database y de Open-Meteo. Integra lecturas de un ESP32 con sensor DHT22 simulado en Wokwi y permite explorar temperatura, humedad relativa y punto de rocío mediante consultas temporales, gráficos y exportación de resultados.
 
 Proyecto académico del curso IC-3101. La aplicación móvil constituye el componente de este repositorio desarrollado para el portafolio.
 
 ## Funcionalidades
 
+- **Historial meteorológico:** datos horarios de los diez días completos anteriores para Santa Clara, San Carlos, con una copia local para consultar sin conexión.
 - **Lectura actual:** temperatura, humedad, punto de rocío y fecha del último registro, con actualización en tiempo real.
 - **Promedios por hora:** consulta de un día y selección de cualquiera de sus 24 franjas horarias.
 - **Promedios por día:** análisis de un rango de fechas, con cantidad de lecturas y gráfico de barras.
@@ -20,6 +21,8 @@ Proyecto académico del curso IC-3101. La aplicación móvil constituye el compo
 flowchart LR
     A[ESP32 + DHT22 en Wokwi] -->|Lecturas por HTTP POST| B[Firebase Realtime Database]
     B -->|Eventos en tiempo real| C[Aplicación Android]
+    F[Open-Meteo · Santa Clara] -->|Descarga de diez días| C
+    C --> G[Copia local del historial meteorológico]
     C --> D[Consultas y gráficos]
     C --> E[Exportación CSV]
 ```
@@ -33,7 +36,7 @@ El punto de rocío se calcula en el ESP32 mediante la aproximación de Magnus, u
 | Componente | Tecnologías |
 | --- | --- |
 | Aplicación móvil | Kotlin, Jetpack Compose, Material 3 |
-| Datos | Firebase Realtime Database |
+| Datos | Firebase Realtime Database y API REST de Open-Meteo |
 | Dispositivo simulado | ESP32, DHT22, C++ y Wokwi |
 | Compilación | Gradle con Kotlin DSL y catálogo de versiones |
 | Pruebas | JUnit para cálculos, filtros, escalas y formato CSV |
@@ -61,6 +64,14 @@ Abre `APP-MOVIL/android` en Android Studio, configura el SDK y Firebase según l
 
 La simulación está disponible en [Wokwi](https://wokwi.com/projects/477474234161260545). Al modificar los valores del DHT22 y ejecutar la simulación, las nuevas lecturas se reflejan en la app conectada al mismo proyecto Firebase.
 
+## Historial meteorológico de Santa Clara
+
+En la app, selecciona **Santa Clara** como fuente y pulsa **Cargar últimos 10 días**. La consulta solicita temperatura, humedad relativa y punto de rocío horarios para las coordenadas aproximadas **10.36, −84.51**. El periodo incluye los diez días completos anteriores al día de descarga, en horario de Costa Rica.
+
+Los valores de Open-Meteo son datos modelados. La app conserva su origen en la interfaz y en los CSV, y guarda la última descarga válida en el teléfono. Las consultas utilizan la fuente seleccionada; la descarga meteorológica se almacena localmente.
+
+Datos proporcionados por [Open-Meteo](https://open-meteo.com/), bajo licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). La aplicación calcula promedios, extremos y filtros sobre esos datos.
+
 ## Criterios de análisis
 
 Las fechas de consulta se interpretan en `America/Costa_Rica`. Cada promedio utiliza las lecturas numéricas válidas de la variable seleccionada; los periodos vacíos se muestran como **Sin datos**. El filtro excluye valores de los resultados sin modificar el historial de Firebase.
@@ -69,6 +80,6 @@ Los gráficos y CSV comparten los mismos cálculos que los resultados en pantall
 
 ## Estado y alcance
 
-La aplicación Android, la integración con Firebase y el envío desde Wokwi están implementados y se han probado con lecturas simuladas. El componente web está pendiente de implementación y corresponde a otro integrante del equipo. La validación con un historial sintético de 10 días sigue pendiente.
+La aplicación Android, la integración con Firebase y el envío desde Wokwi están implementados y se han probado con lecturas simuladas. El componente web está pendiente de implementación y corresponde a otro integrante del equipo. La app incorpora la descarga de un historial meteorológico de diez días desde Open-Meteo; su comprobación de conexión e interfaz se realiza en el dispositivo Android.
 
 La configuración de conexión pertenece a un entorno de demostración. Para una instalación propia, adapta el proyecto Firebase, sus permisos de acceso y la validación TLS del firmware; los detalles están en la guía móvil.

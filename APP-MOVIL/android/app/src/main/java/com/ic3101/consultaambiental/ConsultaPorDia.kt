@@ -9,14 +9,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.firebase.database.*
+import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun ConsultaPorDia() {
-    var inicio by remember { mutableStateOf(LocalDate.now(zonaConsulta)) }
-    var fin by remember { mutableStateOf(LocalDate.now(zonaConsulta)) }
+internal fun ConsultaPorDia(historial: HistorialClima? = null) {
+    var inicio by remember { mutableStateOf(historial?.rango?.inicio ?: LocalDate.now(zonaConsulta)) }
+    var fin by remember { mutableStateOf(historial?.rango?.fin ?: LocalDate.now(zonaConsulta)) }
     var variableElegida by remember { mutableStateOf("temperatura") }
     var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
     var rangoConsulta by remember { mutableStateOf<RangoFechas?>(null) }
@@ -39,9 +40,17 @@ fun ConsultaPorDia() {
     val filtrados = remember(datos, variableElegida, limitesFiltro) { filtrarLecturas(datos, variableElegida, limitesFiltro) }
     val datosConsulta = if (filtroValido) filtrados.registros else emptyList()
 
-    DisposableEffect(rangoConsulta, intento) {
+    DisposableEffect(rangoConsulta, intento, historial) {
         val rango = rangoConsulta
         if (rango == null) {
+            onDispose { }
+        } else if (historial != null) {
+            datos = historial.registros.filter {
+                val fecha = Instant.ofEpochMilli(it.ts).atZone(zonaConsulta).toLocalDate()
+                !fecha.isBefore(rango.inicio) && !fecha.isAfter(rango.fin)
+            }
+            cargando = false
+            mensaje = "${datos.size} datos horarios. Historial disponible: ${historial.rango.inicio} al ${historial.rango.fin}."
             onDispose { }
         } else {
             var activo = true
@@ -94,8 +103,8 @@ fun ConsultaPorDia() {
         val variableCsv = variables.first { it.clave == variableElegida }
         val rangoCsv = rangoConsulta
         val resultadosCsv = rangoCsv?.let { promediosDiarios(datosConsulta, it, variableElegida) }.orEmpty()
-        BotonExportarCsv("promedios_dia_${rangoCsv?.inicio}_${rangoCsv?.fin}_${variableElegida}.csv",
-            if (!cargando && resultadosCsv.any { it.promedio != null }) csvPorDia(variableCsv, resultadosCsv, limitesFiltro) else null)
+        BotonExportarCsv("promedios_dia_${rangoCsv?.inicio}_${rangoCsv?.fin}_${variableElegida}${if (historial != null) "_santa_clara" else ""}.csv",
+            if (!cargando && resultadosCsv.any { it.promedio != null }) csvPorDia(variableCsv, resultadosCsv, limitesFiltro, historial?.origen) else null)
         if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
         Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)

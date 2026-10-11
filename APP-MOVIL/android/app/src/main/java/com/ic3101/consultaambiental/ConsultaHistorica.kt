@@ -12,7 +12,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun ConsultaHistorica() {
+internal fun ConsultaHistorica(historial: HistorialClima? = null) {
     var variableElegida by remember { mutableStateOf("temperatura") }
     var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
     var consultar by remember { mutableStateOf(false) }
@@ -29,8 +29,15 @@ fun ConsultaHistorica() {
     val filtrados = remember(datos, variableElegida, limitesFiltro) { filtrarLecturas(datos, variableElegida, limitesFiltro) }
     val datosConsulta = if (filtroValido) filtrados.registros else emptyList()
 
-    DisposableEffect(consultar, intento) {
+    DisposableEffect(consultar, intento, historial) {
         if (!consultar) {
+            onDispose { }
+        } else if (historial != null) {
+            datos = historial.registros
+            sinFecha = 0
+            cargando = false
+            recibido = true
+            mensaje = "Historial de Open-Meteo recibido: ${datos.size} datos horarios."
             onDispose { }
         } else {
             var activo = true
@@ -78,7 +85,7 @@ fun ConsultaHistorica() {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Valores de todas las lecturas guardadas.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(if (historial == null) "Valores de todas las lecturas guardadas." else "Extremos del periodo de diez días descargado.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectorVariable(variableElegida) { variableElegida = it }
         ControlFiltro(variableFiltro, filtro) { filtro = it }
         Button(enabled = filtroValido && !cargando, onClick = { consultar = true; intento++ }) {
@@ -86,8 +93,8 @@ fun ConsultaHistorica() {
         }
         val variableCsv = variables.first { it.clave == variableElegida }
         val resumenCsv = extremosHistoricos(datosConsulta, variableElegida)
-        BotonExportarCsv("extremos_${variableElegida}.csv",
-            if (recibido && !cargando && resumenCsv != null) csvExtremos(variableCsv, resumenCsv, limitesFiltro) else null)
+        BotonExportarCsv("extremos_${variableElegida}${if (historial != null) "_santa_clara" else ""}.csv",
+            if (recibido && !cargando && resumenCsv != null) csvExtremos(variableCsv, resumenCsv, limitesFiltro, historial?.origen) else null)
         if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
         Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -122,7 +129,7 @@ fun ConsultaHistorica() {
                     }
                 }
             }
-            Text("Horario de Costa Rica. Los valores se actualizan al recibir nuevas lecturas.",
+            Text(if (historial == null) "Horario de Costa Rica. Los valores se actualizan al recibir nuevas lecturas." else "Horario de Costa Rica. Datos del historial meteorológico descargado.",
                 style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
