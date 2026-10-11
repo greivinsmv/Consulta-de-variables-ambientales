@@ -57,9 +57,9 @@ Selecciona el módulo **app**, elige el emulador o dispositivo y pulsa **Run**. 
 
 Selecciona **Santa Clara** en **Fuente de datos**. Inicio consulta las condiciones actuales de temperatura, humedad y punto de rocío al acceder a esta fuente. Las consultas automáticas se repiten cada **15 minutos** mientras Inicio está visible; se detienen al cambiar de pantalla, fuente o enviar la app al fondo. **Actualizar ahora** permite consultar manualmente.
 
-La fecha del dato meteorológico y la última consulta se muestran por separado. Un fallo conserva el último dato recibido durante la sesión con un aviso; si tiene más de 30 minutos de antigüedad, se indica que puede no representar las condiciones actuales. Esta vista funciona sin descargar el historial.
+La fecha del dato meteorológico aparece en Inicio; la hora de la última consulta está en **Información (ⓘ)**. Un fallo conserva el último dato recibido durante la sesión con un aviso; si tiene más de 30 minutos de antigüedad, se indica que puede no representar las condiciones actuales. Esta vista funciona sin descargar el historial.
 
-Para las consultas históricas, pulsa **Cargar últimos 10 días**. Esta fuente utiliza una consulta HTTPS a la API pública de Open-Meteo y no requiere una clave para el uso académico no comercial.
+Para las consultas históricas, pulsa **Cargar historial**. Esta fuente utiliza una consulta HTTPS a la API pública de Open-Meteo y no requiere una clave para el uso académico no comercial.
 
 - Ubicación aproximada: Santa Clara, San Carlos, Costa Rica (**10.36, −84.51**).
 - Variables: `temperature_2m`, `relative_humidity_2m` y `dew_point_2m`.
@@ -69,9 +69,15 @@ Para las consultas históricas, pulsa **Cargar últimos 10 días**. Esta fuente 
 
 Son datos meteorológicos modelados para la zona. Por día propone inicialmente el rango completo, Por hora el último día descargado y Extremos analiza ese historial. Las consultas, filtros y CSV utilizan la fuente seleccionada. Esta fuente aporta un dato por hora: cada promedio horario coincide con ese dato y los diarios usan hasta 24 datos.
 
-La última respuesta válida se guarda de forma atómica en `clima_santa_clara.json`, dentro del almacenamiento privado de la app. Se recupera al abrirla y permite consultar el periodo guardado sin conexión. **Actualizar últimos 10 días** reemplaza esa copia por el nuevo periodo. Si falla la descarga, se conserva la copia previa y se muestra un aviso. Los datos meteorológicos se almacenan localmente.
+La última respuesta válida se guarda de forma atómica en `clima_santa_clara.json`, dentro del almacenamiento privado de la app. Se recupera al abrirla y permite consultar el periodo guardado sin conexión. **Actualizar historial** reemplaza esa copia por el nuevo periodo. Si falla la descarga, se conserva la copia previa y se muestra un aviso. Los datos meteorológicos se almacenan localmente.
 
 Datos: [Open-Meteo](https://open-meteo.com/) · [Licencia CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Los promedios, extremos y filtros son transformaciones realizadas por la aplicación.
+
+## Información y ayuda
+
+El botón **ⓘ** de la cabecera abre el apartado **Información** desde cualquier pantalla. Reúne las fuentes, la ubicación, la frecuencia de actualización, los detalles de la descarga, los criterios de cálculo, el filtro, la exportación y los créditos de Open-Meteo con enlace a la licencia CC BY 4.0.
+
+La vista se abre sobre la consulta actual: **Volver** o el botón Atrás de Android permiten cerrar Información conservando las fechas, la variable, el filtro y los resultados. Las explicaciones generales se concentran allí; las pantallas principales presentan controles, resultados y avisos de error o datos antiguos. El panel para cargar o actualizar el historial está en Inicio y aparece también en las consultas cuando falta una descarga.
 
 ## Modelo de datos
 
@@ -149,6 +155,7 @@ El código de la aplicación está en `android/app/src/main/java/com/ic3101/cons
 | `FiltroAtipicos.kt` | Validación de límites y filtrado por variable |
 | `ExportacionCsv.kt`, `BotonExportarCsv.kt` | Formato CSV y guardado mediante el selector de Android |
 | `ClimaSantaClara.kt`, `ClimaActual.kt`, `SelectorFuenteDatos.kt` | Consultas REST actuales e históricas, validación, copia local y selección de fuente |
+| `InformacionApp.kt` | Ayuda, fuentes, detalles de actualización y créditos |
 | `SelectorTema.kt`, `ui/theme/` | Selector de apariencia y paleta visual |
 
 Los archivos locales del SDK, las carpetas de compilación y las claves de firma se excluyen del control de versiones.

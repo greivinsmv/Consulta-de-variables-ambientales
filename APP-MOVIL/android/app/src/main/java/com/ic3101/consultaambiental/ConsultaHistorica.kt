@@ -19,7 +19,7 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
     var intento by remember { mutableIntStateOf(0) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
-    var mensaje by remember { mutableStateOf("Selecciona las variables y consulta el historial.") }
+    var mensaje by remember { mutableStateOf("") }
     var recibido by remember { mutableStateOf(false) }
     var sinFecha by remember { mutableIntStateOf(0) }
 
@@ -37,7 +37,7 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
             sinFecha = 0
             cargando = false
             recibido = true
-            mensaje = "Historial de Open-Meteo recibido: ${datos.size} datos horarios."
+            mensaje = ""
             onDispose { }
         } else {
             var activo = true
@@ -45,7 +45,7 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
             recibido = false
             datos = emptyList()
             sinFecha = 0
-            mensaje = "Cargando historial…"
+            mensaje = ""
             val referencia = FirebaseDatabase.getInstance("https://proyecto-iot-fa353-default-rtdb.firebaseio.com")
                 .getReference("lecturas/equipo01")
             val listener = object : ValueEventListener {
@@ -69,7 +69,7 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
                     sinFecha = descartados
                     cargando = false
                     recibido = true
-                    mensaje = if (!snapshot.exists()) "Todavía no hay registros históricos." else "Historial recibido."
+                    mensaje = if (!snapshot.exists()) "Todavía no hay registros históricos." else ""
                 }
                 override fun onCancelled(error: DatabaseError) {
                     if (!activo) return
@@ -85,7 +85,6 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(if (historial == null) "Valores de todas las lecturas guardadas." else "Extremos del periodo de diez días descargado.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectorVariable(variableElegida) { variableElegida = it }
         ControlFiltro(variableFiltro, filtro) { filtro = it }
         Button(enabled = filtroValido && !cargando, onClick = { consultar = true; intento++ }) {
@@ -97,7 +96,7 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
             if (recibido && !cargando && resumenCsv != null) csvExtremos(variableCsv, resumenCsv, limitesFiltro, historial?.origen) else null)
         if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
-        Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (mensaje.isNotBlank()) Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (recibido && !cargando) {
             if (sinFecha > 0) Text("Se omitieron $sinFecha registros sin una fecha válida.")
             if (datos.isNotEmpty()) {
@@ -122,15 +121,13 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
                                 style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                             Text(fechaHistorica(resumen.maximo.ts), style = MaterialTheme.typography.bodySmall)
                             if (resumen.minimo.repeticiones > 1 || resumen.maximo.repeticiones > 1) {
-                                Text("Repeticiones: mínimo ${resumen.minimo.repeticiones}, máximo ${resumen.maximo.repeticiones}. Se muestra la primera fecha de cada extremo.")
+                                Text("Repeticiones: mínimo ${resumen.minimo.repeticiones}, máximo ${resumen.maximo.repeticiones}.")
                             }
                             Text("Amplitud: ${numeroHistorico(resumen.maximo.valor - resumen.minimo.valor)} ${variable.unidad}")
                         }
                     }
                 }
             }
-            Text(if (historial == null) "Horario de Costa Rica. Los valores se actualizan al recibir nuevas lecturas." else "Horario de Costa Rica. Datos del historial meteorológico descargado.",
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }

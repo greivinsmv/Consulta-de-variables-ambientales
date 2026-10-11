@@ -23,7 +23,7 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
     var rangoConsulta by remember { mutableStateOf<RangoFechas?>(null) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
     var cargando by remember { mutableStateOf(false) }
-    var mensaje by remember { mutableStateOf("Selecciona las fechas y las variables.") }
+    var mensaje by remember { mutableStateOf("") }
     var intento by remember { mutableIntStateOf(0) }
     val error = errorRango(inicio, fin, LocalDate.now(zonaConsulta))
 
@@ -31,7 +31,7 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
         rangoConsulta = null
         datos = emptyList()
         cargando = false
-        mensaje = "Pulsa Consultar para cargar el rango elegido."
+        mensaje = ""
     }
 
     val variableFiltro = variables.first { it.clave == variableElegida }
@@ -50,13 +50,13 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
                 !fecha.isBefore(rango.inicio) && !fecha.isAfter(rango.fin)
             }
             cargando = false
-            mensaje = "${datos.size} datos horarios. Historial disponible: ${historial.rango.inicio} al ${historial.rango.fin}."
+            mensaje = if (datos.isEmpty()) "Sin datos. Historial disponible: ${historial.rango.inicio} al ${historial.rango.fin}." else ""
             onDispose { }
         } else {
             var activo = true
             cargando = true
             datos = emptyList()
-            mensaje = "Cargando…"
+            mensaje = ""
             val desde = rango.inicio.atStartOfDay(zonaConsulta).toInstant().toEpochMilli()
             val hasta = rango.fin.plusDays(1).atStartOfDay(zonaConsulta).toInstant().toEpochMilli() - 1
             val consulta = FirebaseDatabase.getInstance("https://proyecto-iot-fa353-default-rtdb.firebaseio.com")
@@ -74,7 +74,7 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
                         RegistroAmbiental(ts, valores)
                     }
                     cargando = false
-                    mensaje = if (datos.isEmpty()) "No hay lecturas en este rango." else "${datos.size} registros recibidos."
+                    mensaje = if (datos.isEmpty()) "No hay lecturas en este rango." else ""
                 }
                 override fun onCancelled(error: DatabaseError) {
                     if (!activo) return
@@ -90,7 +90,6 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text("Periodo", style = MaterialTheme.typography.labelLarge)
-        Text("Se incluyen la fecha inicial y la final.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         SelectorFechaDiaria("Fecha inicial", inicio) { inicio = it; limpiarResultados() }
         SelectorFechaDiaria("Fecha final", fin) { fin = it; limpiarResultados() }
         SelectorVariable(variableElegida) { variableElegida = it }
@@ -107,10 +106,9 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
             if (!cargando && resultadosCsv.any { it.promedio != null }) csvPorDia(variableCsv, resultadosCsv, limitesFiltro, historial?.origen) else null)
         if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
-        Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        if (mensaje.isNotBlank()) Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (!cargando) rangoConsulta?.let { rango ->
             Text("Resultados: ${fechaDiaria(rango.inicio)} al ${fechaDiaria(rango.fin)}")
-            Text("Promedio de las lecturas disponibles en cada día.", style = MaterialTheme.typography.bodySmall)
             variables.filter { it.clave == variableElegida }.forEach { variable ->
                 val resultados = remember(datosConsulta, rango, variable.clave) { promediosDiarios(datosConsulta, rango, variable.clave) }
                 val conDatos = resultados.filter { it.promedio != null }

@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -65,7 +64,6 @@ internal fun datoActualAnterior(clima: ClimaActual, ahora: Long): Boolean =
 
 @Composable
 internal fun VistaClimaActual(clima: ClimaActual?, cargando: Boolean, mensaje: String?, alActualizar: () -> Unit) {
-    val enlaces = LocalUriHandler.current
     val ahora = System.currentTimeMillis()
     fun valor(clave: String, unidad: String) = clima?.registro?.valores?.get(clave)?.let {
         String.format(Locale.getDefault(), "%.1f %s", it, unidad)
@@ -73,9 +71,7 @@ internal fun VistaClimaActual(clima: ClimaActual?, cargando: Boolean, mensaje: S
     fun fecha(ts: Long) = Instant.ofEpochMilli(ts).atZone(zonaConsulta)
         .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Clima actual · Santa Clara", style = MaterialTheme.typography.titleLarge)
-        Text("Estimaciones de Open-Meteo para la zona. Consulta automática cada 15 minutos mientras Inicio esté visible.",
-            style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Clima actual", style = MaterialTheme.typography.titleLarge)
         OutlinedButton(enabled = !cargando, onClick = alActualizar) { Text("Actualizar ahora") }
         if (cargando) LinearProgressIndicator(Modifier.fillMaxWidth())
         mensaje?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
@@ -84,7 +80,7 @@ internal fun VistaClimaActual(clima: ClimaActual?, cargando: Boolean, mensaje: S
                 Text("La última estimación disponible es de ${fecha(clima.registro.ts)}. Puede no representar las condiciones actuales.",
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-            TarjetaTemperatura(valor("temperatura", "°C"), "Dato meteorológico modelado")
+            TarjetaTemperatura(valor("temperatura", "°C"))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 TarjetaMedicion("Humedad", valor("humedad", "%"), "humedad", Modifier.weight(1f))
                 TarjetaMedicion("Punto de rocío", valor("puntoRocio", "°C"), "rocio", Modifier.weight(1f))
@@ -93,14 +89,8 @@ internal fun VistaClimaActual(clima: ClimaActual?, cargando: Boolean, mensaje: S
                 Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Fecha del dato", style = MaterialTheme.typography.titleSmall)
                     Text(fecha(clima.registro.ts))
-                    Text("Última consulta: ${fecha(clima.consultadoEn)}", style = MaterialTheme.typography.bodySmall)
-                    Text("Horario de Costa Rica", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         } else if (!cargando && mensaje == null) Text("Pulsa Actualizar ahora para consultar el clima.")
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            TextButton(onClick = { enlaces.openUri(urlProveedorClima) }) { Text("Open-Meteo") }
-            TextButton(onClick = { enlaces.openUri(licenciaClima) }) { Text("CC BY 4.0") }
-        }
     }
 }

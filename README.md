@@ -15,6 +15,7 @@ Proyecto académico del curso IC-3101. La aplicación móvil constituye el compo
 - **Filtro de valores atípicos:** límites mínimo y máximo editables por variable, aplicados a los cálculos, gráficos y exportaciones.
 - **Exportación CSV:** resultados con unidades, fechas, zona horaria y límites del filtro cuando está activo.
 - **Apariencia:** navegación inferior, tarjetas de medición y temas claro y oscuro con preferencia guardada.
+- **Información:** apartado accesible desde la cabecera con fuentes, créditos, licencia y criterios de análisis.
 
 ## Flujo de datos
 
@@ -67,11 +68,11 @@ La simulación está disponible en [Wokwi](https://wokwi.com/projects/4774742341
 
 ## Historial meteorológico de Santa Clara
 
-En la app, selecciona **Santa Clara** como fuente. Inicio consulta automáticamente las condiciones actuales y ofrece **Actualizar ahora**. El clima actual se presenta con la fecha del dato y la hora de consulta; si falla una actualización, se avisa y se conserva el último dato recibido durante la sesión.
+En la app, selecciona **Santa Clara** como fuente. Inicio consulta automáticamente las condiciones actuales y ofrece **Actualizar ahora**. El clima actual presenta la fecha del dato. La última consulta y los detalles de la fuente están en **Información**. Si falla una actualización, se avisa y se conserva el último dato recibido durante la sesión.
 
-Para las consultas históricas, pulsa **Cargar últimos 10 días**. La consulta solicita temperatura, humedad relativa y punto de rocío horarios para las coordenadas aproximadas **10.36, −84.51**. El periodo incluye los diez días completos anteriores al día de descarga, en horario de Costa Rica.
+Para las consultas históricas, pulsa **Cargar historial**. La consulta solicita temperatura, humedad relativa y punto de rocío horarios para las coordenadas aproximadas **10.36, −84.51**. El periodo incluye los diez días completos anteriores al día de descarga, en horario de Costa Rica.
 
-Los valores de Open-Meteo son datos modelados. La app conserva su origen en la interfaz y en los CSV, y guarda la última descarga válida en el teléfono. Las consultas utilizan la fuente seleccionada; la descarga meteorológica se almacena localmente.
+Los valores de Open-Meteo son datos modelados. El apartado **Información (ⓘ)** documenta el origen de los datos y los CSV incluyen su atribución. La app guarda la última descarga válida en el teléfono. Las consultas utilizan la fuente seleccionada; la descarga meteorológica se almacena localmente.
 
 Datos proporcionados por [Open-Meteo](https://open-meteo.com/), bajo licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). La aplicación calcula promedios, extremos y filtros sobre esos datos.
 

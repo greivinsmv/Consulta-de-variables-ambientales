@@ -84,8 +84,8 @@ internal fun GraficoHorario(resultados: List<PromedioHora>, unidad: String, eleg
             }
         }
     }
-    Text(if (resultados.size == 1) "Una hora con datos. Aún no hay evolución para comparar."
-        else "Toca un punto para elegir su hora. Los espacios sin lecturas quedan vacíos.",
+    Text(if (resultados.size == 1) "Una sola hora con datos."
+        else "Toca un punto para elegir su hora.",
         style = MaterialTheme.typography.bodySmall, color = texto)
 }
 
