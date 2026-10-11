@@ -37,7 +37,7 @@ internal fun InformacionApp(historial: HistorialClima?, actual: ClimaActual?, al
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     TarjetaInformacion("Fuentes de datos") {
                         Text("ESP32", style = MaterialTheme.typography.titleSmall)
-                        Text("Lecturas de un DHT22 simulado en Wokwi, almacenadas en Firebase. La app recibe las lecturas nuevas automáticamente.")
+                        Text("Lecturas de un DHT22 simulado en Wokwi, almacenadas en Firebase XD. La app recibe las lecturas nuevas automáticamente.")
                         Text("Santa Clara, San Carlos", style = MaterialTheme.typography.titleSmall)
                         Text("Estimaciones meteorológicas de Open-Meteo para la zona. Ubicación aproximada: 10.36, −84.51.")
                         Text("Los resultados utilizan la fuente seleccionada en la app.")
