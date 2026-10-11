@@ -6,6 +6,7 @@ Proyecto académico del curso IC-3101. La aplicación móvil constituye el compo
 
 ## Funcionalidades
 
+- **Clima actual de Santa Clara:** condiciones meteorológicas con consulta automática cada 15 minutos mientras Inicio está visible y actualización manual.
 - **Historial meteorológico:** datos horarios de los diez días completos anteriores para Santa Clara, San Carlos, con una copia local para consultar sin conexión.
 - **Lectura actual:** temperatura, humedad, punto de rocío y fecha del último registro, con actualización en tiempo real.
 - **Promedios por hora:** consulta de un día y selección de cualquiera de sus 24 franjas horarias.
@@ -66,7 +67,9 @@ La simulación está disponible en [Wokwi](https://wokwi.com/projects/4774742341
 
 ## Historial meteorológico de Santa Clara
 
-En la app, selecciona **Santa Clara** como fuente y pulsa **Cargar últimos 10 días**. La consulta solicita temperatura, humedad relativa y punto de rocío horarios para las coordenadas aproximadas **10.36, −84.51**. El periodo incluye los diez días completos anteriores al día de descarga, en horario de Costa Rica.
+En la app, selecciona **Santa Clara** como fuente. Inicio consulta automáticamente las condiciones actuales y ofrece **Actualizar ahora**. El clima actual se presenta con la fecha del dato y la hora de consulta; si falla una actualización, se avisa y se conserva el último dato recibido durante la sesión.
+
+Para las consultas históricas, pulsa **Cargar últimos 10 días**. La consulta solicita temperatura, humedad relativa y punto de rocío horarios para las coordenadas aproximadas **10.36, −84.51**. El periodo incluye los diez días completos anteriores al día de descarga, en horario de Costa Rica.
 
 Los valores de Open-Meteo son datos modelados. La app conserva su origen en la interfaz y en los CSV, y guarda la última descarga válida en el teléfono. Las consultas utilizan la fuente seleccionada; la descarga meteorológica se almacena localmente.
 
@@ -80,6 +83,6 @@ Los gráficos y CSV comparten los mismos cálculos que los resultados en pantall
 
 ## Estado y alcance
 
-La aplicación Android, la integración con Firebase y el envío desde Wokwi están implementados y se han probado con lecturas simuladas. El componente web está pendiente de implementación y corresponde a otro integrante del equipo. La app incorpora la descarga de un historial meteorológico de diez días desde Open-Meteo; su comprobación de conexión e interfaz se realiza en el dispositivo Android.
+La aplicación Android, la integración con Firebase y el envío desde Wokwi están implementados y se han probado con lecturas simuladas. El componente web está pendiente de implementación y corresponde a otro integrante del equipo. La app incorpora la descarga de un historial meteorológico de diez días desde Open-Meteo; las respuestas actuales e históricas de la API se han comprobado. La verificación visual se realiza en el dispositivo Android.
 
 La configuración de conexión pertenece a un entorno de demostración. Para una instalación propia, adapta el proyecto Firebase, sus permisos de acceso y la validación TLS del firmware; los detalles están en la guía móvil.

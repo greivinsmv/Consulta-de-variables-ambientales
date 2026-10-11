@@ -55,7 +55,11 @@ Selecciona el módulo **app**, elige el emulador o dispositivo y pulsa **Run**. 
 
 ### 4. Consultar el clima de Santa Clara
 
-Selecciona **Santa Clara** en **Fuente de datos** y pulsa **Cargar últimos 10 días**. Esta fuente utiliza una consulta HTTPS a la API pública de Open-Meteo y no requiere una clave para el uso académico no comercial.
+Selecciona **Santa Clara** en **Fuente de datos**. Inicio consulta las condiciones actuales de temperatura, humedad y punto de rocío al acceder a esta fuente. Las consultas automáticas se repiten cada **15 minutos** mientras Inicio está visible; se detienen al cambiar de pantalla, fuente o enviar la app al fondo. **Actualizar ahora** permite consultar manualmente.
+
+La fecha del dato meteorológico y la última consulta se muestran por separado. Un fallo conserva el último dato recibido durante la sesión con un aviso; si tiene más de 30 minutos de antigüedad, se indica que puede no representar las condiciones actuales. Esta vista funciona sin descargar el historial.
+
+Para las consultas históricas, pulsa **Cargar últimos 10 días**. Esta fuente utiliza una consulta HTTPS a la API pública de Open-Meteo y no requiere una clave para el uso académico no comercial.
 
 - Ubicación aproximada: Santa Clara, San Carlos, Costa Rica (**10.36, −84.51**).
 - Variables: `temperature_2m`, `relative_humidity_2m` y `dew_point_2m`.
@@ -63,7 +67,7 @@ Selecciona **Santa Clara** en **Fuente de datos** y pulsa **Cargar últimos 10 d
 - Resolución: un dato por hora, hasta **240 registros** por descarga.
 - Endpoint: `https://api.open-meteo.com/v1/forecast`, con `start_date`, `end_date` y `timeformat=unixtime`.
 
-Son datos meteorológicos modelados para la zona. Inicio presenta el último dato horario del periodo; Por día propone inicialmente el rango completo, Por hora el último día descargado y Extremos analiza ese historial. Las consultas, filtros y CSV utilizan la fuente seleccionada. Esta fuente aporta un dato por hora: cada promedio horario coincide con ese dato y los diarios usan hasta 24 datos.
+Son datos meteorológicos modelados para la zona. Por día propone inicialmente el rango completo, Por hora el último día descargado y Extremos analiza ese historial. Las consultas, filtros y CSV utilizan la fuente seleccionada. Esta fuente aporta un dato por hora: cada promedio horario coincide con ese dato y los diarios usan hasta 24 datos.
 
 La última respuesta válida se guarda de forma atómica en `clima_santa_clara.json`, dentro del almacenamiento privado de la app. Se recupera al abrirla y permite consultar el periodo guardado sin conexión. **Actualizar últimos 10 días** reemplaza esa copia por el nuevo periodo. Si falla la descarga, se conserva la copia previa y se muestra un aviso. Los datos meteorológicos se almacenan localmente.
 
@@ -144,11 +148,11 @@ El código de la aplicación está en `android/app/src/main/java/com/ic3101/cons
 | `GraficosAmbientales.kt` | Escalas y representación de los gráficos |
 | `FiltroAtipicos.kt` | Validación de límites y filtrado por variable |
 | `ExportacionCsv.kt`, `BotonExportarCsv.kt` | Formato CSV y guardado mediante el selector de Android |
-| `ClimaSantaClara.kt`, `SelectorFuenteDatos.kt` | Consulta REST, validación de datos, copia local y selección de fuente |
+| `ClimaSantaClara.kt`, `ClimaActual.kt`, `SelectorFuenteDatos.kt` | Consultas REST actuales e históricas, validación, copia local y selección de fuente |
 | `SelectorTema.kt`, `ui/theme/` | Selector de apariencia y paleta visual |
 
 Los archivos locales del SDK, las carpetas de compilación y las claves de firma se excluyen del control de versiones.
 
 ## Alcance actual
 
-La app se ha probado con lecturas simuladas y con exportaciones por hora, por día y de extremos. El historial de diez días se obtiene de Open-Meteo. La comprobación de descarga en vivo y de la interfaz meteorológica se realiza en el dispositivo Android. La consulta de extremos descarga todo el historial y está pensada para el volumen de datos del proyecto académico; conjuntos mayores requerirían una estrategia de agregación o paginación.
+La app se ha probado con lecturas simuladas y con exportaciones por hora, por día y de extremos. El historial de diez días se obtiene de Open-Meteo. Las respuestas actuales e históricas de la API se han comprobado en vivo. La comprobación de la interfaz meteorológica se realiza en el dispositivo Android. La consulta de extremos descarga todo el historial y está pensada para el volumen de datos del proyecto académico; conjuntos mayores requerirían una estrategia de agregación o paginación.

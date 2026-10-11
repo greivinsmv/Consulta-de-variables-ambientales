@@ -31,7 +31,7 @@ internal fun PanelClima(historial: HistorialClima?, cargando: Boolean, mensaje: 
     var detalles by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Santa Clara, San Carlos", style = MaterialTheme.typography.titleMedium)
+            Text("Historial de 10 días", style = MaterialTheme.typography.titleMedium)
             Text("Datos horarios modelados · Open-Meteo", style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant)
             Button(enabled = !cargando, onClick = alDescargar) {
