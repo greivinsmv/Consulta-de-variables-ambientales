@@ -1,0 +1,21 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "lecturas": {
+      "equipo01": {
+        ".read": true,
+        ".indexOn": ["ts"],
+        "$lectura": {
+          ".write": "auth != null && auth.uid === '__UID_WOKWI__' && !data.exists() && newData.exists()",
+          ".validate": "newData.hasChildren(['temperatura', 'humedad', 'puntoRocio', 'ts'])",
+          "temperatura": { ".validate": "newData.isNumber()" },
+          "humedad": { ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 100" },
+          "puntoRocio": { ".validate": "newData.isNumber()" },
+          "ts": { ".validate": "newData.isNumber() && newData.val() === now" },
+          "$otro": { ".validate": false }
+        }
+      }
+    }
+  }
+}

@@ -16,3 +16,7 @@ La interfaz web compartirá con la aplicación Android la fuente de datos en Fir
 Los registros se almacenan en `lecturas/equipo01`. La descripción general del sistema está en el [README principal](../README.md) y el funcionamiento del cliente Android en la [guía móvil](../APP-MOVIL/README.md).
 
 La elección de tecnologías, las instrucciones de ejecución y las funcionalidades web se documentarán junto con su implementación.
+
+## Acceso a los datos
+
+La web debe consultar directamente `lecturas/equipo01`, sin leer toda la raíz de la base. Las reglas preparadas permiten lectura de esa ruta y reservan la creación de registros al UID del ESP32. No incluyas credenciales de escritura o administración en el frontend. Consulta [la guía de acceso](../firebase/README.md).

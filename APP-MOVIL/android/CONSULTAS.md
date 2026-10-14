@@ -74,7 +74,7 @@ Los valores de Open-Meteo son estimaciones meteorológicas para coordenadas apro
 
 ## Firebase
 
-La ruta `lecturas/equipo01` contiene `ts` en milisegundos Unix y las variables `temperatura`, `humedad` y `puntoRocio`. Las consultas de fecha necesitan permisos de lectura y `.indexOn: ["ts"]`. Las pantallas de consulta no escriben datos ni cambian reglas.
+La ruta `lecturas/equipo01` contiene `ts` en milisegundos Unix y las variables `temperatura`, `humedad` y `puntoRocio`. Las consultas de fecha necesitan permisos de lectura y `.indexOn: ["ts"]`. Las pantallas de consulta no escriben datos ni cambian reglas. La configuración de lectura pública de esta ruta y escritura exclusiva del dispositivo está documentada en [firebase/README.md](../../firebase/README.md).
 
 ## Información y apariencia
 
