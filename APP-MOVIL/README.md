@@ -45,7 +45,7 @@ El repositorio incluye `app/google-services.json` para el proyecto de demostraci
 2. Descarga su `google-services.json` y colócalo en `APP-MOVIL/android/app/`.
 3. Configura la URL de Realtime Database en `MainActivity.kt`, `ConsultaPorHora.kt`, `ConsultaPorDia.kt` y `ConsultaHistorica.kt`.
 4. Conserva la ruta `lecturas/equipo01` o adapta las referencias de lectura al esquema elegido.
-5. Configura los permisos de lectura y un índice `.indexOn: ["ts"]` en esa ruta para las consultas por fecha.
+5. Sigue la [guía de acceso](../firebase/README.md) para permitir lectura de esa ruta y reservar la escritura al dispositivo. Las reglas incluyen el índice `.indexOn: ["ts"]` necesario para las consultas por fecha.
 
 El proyecto de demostración utiliza `proyecto-iot-fa353`. La aplicación solo consulta datos; el ESP32 es el componente que envía las lecturas. Las reglas de Firebase determinan quién puede leer y escribir.
 
@@ -134,13 +134,13 @@ Las pruebas unitarias verifican promedios, extremos, filtros independientes por 
 
 Consulta [CONSULTAS.md](android/CONSULTAS.md) para los criterios de cálculo y escenarios de comprobación.
 
-## Simulación ESP32
+## Integración con el ESP32
 
-La carpeta `wokwi/` contiene el firmware (`main.cpp`), el circuito (`diagram.json`) y las bibliotecas (`libraries.txt`). El circuito utiliza un ESP32 y un DHT22 conectado al GPIO 15.
+El firmware y el circuito de Wokwi se mantienen fuera del repositorio. El dispositivo simula un DHT22 en GPIO 15, calcula el punto de rocío mediante Magnus y envía una lectura por minuto a `lecturas/equipo01`.
 
-Abre la [simulación en Wokwi](https://wokwi.com/projects/477474234161260545), ejecuta el circuito y modifica la temperatura o humedad del sensor. El firmware calcula el punto de rocío con la aproximación de Magnus y envía una lectura por minuto. Un mensaje **HTTP 200** indica que Firebase aceptó el envío.
+La app no necesita credenciales de escritura. Para proteger la base, configura una cuenta de Firebase Authentication exclusiva del dispositivo, autoriza su UID en las reglas y proporciona un ID token temporal al iniciar Wokwi. La contraseña no se incorpora a la app ni a un proyecto Wokwi accesible mediante un enlace.
 
-Para usar otra base de datos, modifica `FIREBASE_URL` y, si corresponde, `EQUIPO` en el firmware. La versión de laboratorio utiliza `setInsecure()` y no valida el certificado TLS del servidor; una instalación fuera de ese entorno requiere configurar esa validación.
+El procedimiento, el script de PowerShell y las pruebas de reglas están en [firebase/README.md](../firebase/README.md). Publicar el código en GitHub no despliega las reglas ni habilita Authentication. La lectura pública queda limitada a la ruta del equipo; la cuenta del dispositivo solo crea lecturas nuevas.
 
 ## Organización del código
 
