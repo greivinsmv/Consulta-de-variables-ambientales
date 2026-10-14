@@ -22,7 +22,7 @@ Proyecto académico del curso IC-3101. La aplicación móvil constituye el compo
 
 ```mermaid
 flowchart LR
-    A[ESP32 + DHT22 en Wokwi] -->|Lecturas por HTTP POST| B[Firebase Realtime Database]
+    A[ESP32 + DHT22 en Wokwi] -->|Lecturas por HTTPS| B[Firebase Realtime Database]
     B -->|Eventos en tiempo real| C[Aplicación Android]
     F[Open-Meteo · Zonas de Costa Rica] -->|Clima actual y pronóstico| C
     F -->|Historial de diez días| C
@@ -49,14 +49,15 @@ El punto de rocío se calcula en el ESP32 mediante la aproximación de Magnus, u
 
 ```text
 APP-MOVIL/
-├── android/       Aplicación Android y pruebas
-└── wokwi/         Firmware y circuito simulado
+└── android/       Aplicación Android y pruebas
+firebase/          Reglas de acceso, pruebas y configuración del dispositivo
 WEB/               Espacio del componente web
 ```
 
 - [Configuración y ejecución de la app](APP-MOVIL/README.md)
 - [Comportamiento de las consultas y comprobaciones](APP-MOVIL/android/CONSULTAS.md)
 - [Estado del componente web](WEB/README.md)
+- [Acceso de lectura y autenticación del ESP32](firebase/README.md)
 
 ## Ejecutar el proyecto
 
@@ -66,7 +67,7 @@ git clone https://github.com/greivinsmv/Consulta-de-variables-ambientales.git
 
 Abre `APP-MOVIL/android` en Android Studio, configura el SDK y Firebase según la [guía de la aplicación móvil](APP-MOVIL/README.md), sincroniza Gradle y ejecuta el módulo `app` en un dispositivo con Android 8.0 o superior.
 
-La simulación está disponible en [Wokwi](https://wokwi.com/projects/477474234161260545). Al modificar los valores del DHT22 y ejecutar la simulación, las nuevas lecturas se reflejan en la app conectada al mismo proyecto Firebase.
+La simulación de Wokwi se mantiene aparte del repositorio. El dispositivo utiliza una cuenta exclusiva de Firebase Authentication; la app recibe sus nuevas lecturas sin credenciales de escritura. Consulta la [configuración de acceso](firebase/README.md) para preparar y publicar las reglas.
 
 ## Clima y pronósticos
 
@@ -88,4 +89,4 @@ Los gráficos y CSV comparten los mismos cálculos que los resultados en pantall
 
 La aplicación Android, la integración con Firebase y el envío desde Wokwi están implementados y se han probado con lecturas simuladas. El componente web está pendiente de implementación y corresponde a otro integrante del equipo. La app incorpora pronósticos y un historial meteorológico de diez días desde Open-Meteo. La compilación, las pruebas unitarias y las respuestas del servicio se verifican por separado de la interfaz. La verificación visual se realiza en el dispositivo Android.
 
-La configuración de conexión pertenece a un entorno de demostración. Para una instalación propia, adapta el proyecto Firebase, sus permisos de acceso y la validación TLS del firmware; los detalles están en la guía móvil.
+La configuración de conexión pertenece a un entorno de demostración. Esta rama incluye reglas y pruebas para limitar la escritura al dispositivo; deben configurarse con su UID y publicarse en Firebase para surtir efecto. La configuración de cliente Firebase y las coordenadas de Open-Meteo son públicas. Las contraseñas, tokens y claves administrativas quedan fuera del repositorio.
