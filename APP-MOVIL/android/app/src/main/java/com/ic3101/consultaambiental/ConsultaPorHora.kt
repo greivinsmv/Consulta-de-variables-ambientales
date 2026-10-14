@@ -36,7 +36,7 @@ internal val variables = listOf(
 internal fun ConsultaPorHora(historial: HistorialClima? = null) {
     val contexto = LocalContext.current
     var dia by remember { mutableStateOf(historial?.rango?.fin ?: LocalDate.now(zonaConsulta)) }
-    var variableElegida by remember { mutableStateOf("temperatura") }
+    var elegidas by remember { mutableStateOf(listOf("temperatura")) }
     var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
     var fechaConsulta by remember { mutableStateOf<LocalDate?>(null) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
@@ -46,11 +46,18 @@ internal fun ConsultaPorHora(historial: HistorialClima? = null) {
     var horaElegida by remember { mutableIntStateOf(0) }
     var menuHoras by remember { mutableStateOf(false) }
 
-    val variableFiltro = variables.first { it.clave == variableElegida }
-    val limitesFiltro = if (filtro.activo) interpretarLimites(filtro.limites.getValue(variableElegida)) else null
-    val filtroValido = !filtro.activo || limitesFiltro != null
-    val filtrados = remember(datos, variableElegida, limitesFiltro) { filtrarLecturas(datos, variableElegida, limitesFiltro) }
-    val datosConsulta = if (filtroValido) filtrados.registros else emptyList()
+    val filtroValido = comparacionValida(elegidas, filtro)
+    val filtrados = remember(datos, elegidas, filtro) { datosComparacion(datos, elegidas, filtro) }
+    // Cada serie conserva sus registros: excluir una temperatura no elimina su humedad.
+    val resultados = remember(filtrados, fechaConsulta, filtroValido) {
+        if (!filtroValido || fechaConsulta == null) emptyMap() else filtrados.mapValues { (clave, valor) ->
+            promediosPorHora(valor.registros, fechaConsulta!!, clave)
+        }
+    }
+    LaunchedEffect(fechaConsulta, resultados) {
+        if (resultados.values.none { serie -> serie.any { it.hora == horaElegida } })
+            resultados.values.flatten().minOfOrNull { it.hora }?.let { horaElegida = it }
+    }
 
     DisposableEffect(fechaConsulta, intento, historial) {
         val fecha = fechaConsulta
@@ -108,60 +115,44 @@ internal fun ConsultaPorHora(historial: HistorialClima? = null) {
             selector.datePicker.maxDate = System.currentTimeMillis()
             selector.show()
         }) { Text(dia.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))) }
-        SelectorVariable(variableElegida) { variableElegida = it }
-        ControlFiltro(variableFiltro, filtro) { filtro = it }
+        SelectorVariables(elegidas) { elegidas = it }
+        FiltrosComparacion(elegidas, filtro) { filtro = it }
         Button(enabled = filtroValido && !cargando && !dia.isAfter(LocalDate.now(zonaConsulta)),
-            onClick = { fechaConsulta = dia; intento++ }) { Text("Consultar promedios") }
-        val variableCsv = variables.first { it.clave == variableElegida }
-        val fechaCsv = fechaConsulta
-        val resultadosCsv = fechaCsv?.let { promediosPorHora(datosConsulta, it, variableElegida) }.orEmpty()
-        BotonExportarCsv("promedios_hora_${fechaCsv}_${variableElegida}${if (historial != null) "_santa_clara" else ""}.csv",
-            if (!cargando && fechaCsv != null && resultadosCsv.isNotEmpty()) csvPorHora(fechaCsv, variableCsv, resultadosCsv, limitesFiltro, historial?.origen) else null)
-        if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
+            onClick = { fechaConsulta = dia; intento++ }) { Text("Consultar") }
+        val csv = if (!cargando && filtroValido && fechaConsulta != null && resultados.values.any { it.isNotEmpty() })
+            combinarCsvSeries(variables.filter { it.clave in elegidas }.map { v ->
+                csvPorHora(fechaConsulta!!, v, resultados[v.clave].orEmpty(), limitesComparacion(filtro, v.clave), historial?.origen)
+            }) else null
+        BotonExportarCsv("promedios_hora_${fechaConsulta}_${elegidas.joinToString("_")}${historial?.let { "_${it.ubicacion.id}" }.orEmpty()}.csv", csv)
+        if (filtro.activo && filtroValido && datos.isNotEmpty()) variables.filter { it.clave in elegidas }.forEach { v ->
+            Text(v.nombre, style = MaterialTheme.typography.labelMedium)
+            ResumenFiltro(filtrados.getValue(v.clave), true)
+        }
         if (cargando) CircularProgressIndicator()
         if (mensaje.isNotBlank()) Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        fechaConsulta?.let { fecha ->
-            Text("Resultados del ${fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}")
-            Text("Hora del promedio", style = MaterialTheme.typography.labelLarge)
+        if (!cargando && filtroValido) fechaConsulta?.let { fecha ->
+            Text(fecha.format(DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.forLanguageTag("es-CR"))),
+                style = MaterialTheme.typography.titleMedium)
+            val series = variables.filter { it.clave in elegidas }.map { v ->
+                SerieGrafico(v, resultados[v.clave].orEmpty().map { PuntoGrafico(it.hora, it.promedio) })
+            }
+            val horas = series.flatMap { it.puntos }.map { it.indice }.distinct().sorted()
+            if (horas.isNotEmpty()) GraficoComparacion(series, horas, horas.map { String.format(Locale.ROOT, "%02d:00", it) }, horaElegida) { horaElegida = it }
             Box {
                 OutlinedButton(onClick = { menuHoras = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(String.format(Locale.getDefault(), "%02d:00–%02d:59 · Elegir hora ▾", horaElegida, horaElegida))
+                    Text(String.format(Locale.ROOT, "%02d:00–%02d:59 ▾", horaElegida, horaElegida))
                 }
                 DropdownMenu(expanded = menuHoras, onDismissRequest = { menuHoras = false }, modifier = Modifier.heightIn(max = 320.dp)) {
                     (0..23).forEach { hora ->
-                        DropdownMenuItem(
-                            text = { Text(String.format(Locale.getDefault(), "%02d:00–%02d:59", hora, hora)) },
-                            onClick = { horaElegida = hora; menuHoras = false }
-                        )
+                        DropdownMenuItem(text = { Text(String.format(Locale.ROOT, "%02d:00–%02d:59", hora, hora)) },
+                            onClick = { horaElegida = hora; menuHoras = false })
                     }
                 }
             }
-            variables.filter { it.clave == variableElegida }.forEach { variable ->
-                val resultados = promediosPorHora(datosConsulta, fecha, variable.clave)
-                Text(variable.nombre, style = MaterialTheme.typography.titleMedium)
-                if (resultados.isEmpty()) {
-                    Text("Sin datos válidos para esta variable.")
-                } else {
-                    val resultado = resultados.find { it.hora == horaElegida }
-                    Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.surfaceVariant,
-                        modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Text(String.format(Locale.getDefault(), "%02d:00–%02d:59", horaElegida, horaElegida),
-                                style = MaterialTheme.typography.labelLarge)
-                            Text(resultado?.let { "${formato(it.promedio)} ${variable.unidad}" } ?: "Sin datos",
-                                style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-                            Text(resultado?.let { "Promedio de ${it.cantidad} lecturas" } ?: "No hay lecturas en esta hora.",
-                                style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                    var mostrarGrafico by remember(fecha, variable.clave) { mutableStateOf(false) }
-                    OutlinedButton(onClick = { mostrarGrafico = !mostrarGrafico }) {
-                        Text(if (mostrarGrafico) "Ocultar gráfico" else "Ver gráfico del día")
-                    }
-                    if (mostrarGrafico) GraficoHorario(resultados, variable.unidad, horaElegida) { horaElegida = it }
-                }
-            }
+            DetalleComparacion(elegidas, resultados.mapValues { (_, serie) ->
+                val r = serie.find { it.hora == horaElegida }
+                r?.promedio to (r?.cantidad ?: 0)
+            })
         }
     }
 }
-private fun formato(valor: Double): String = String.format(Locale.getDefault(), "%.1f", valor)

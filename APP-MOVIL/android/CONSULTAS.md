@@ -1,236 +1,103 @@
-# Consultas ambientales
+# Consultas y clima
 
-La app permite ver la lectura actual y consultar promedios por hora o por día.
-La navegación inferior ofrece Inicio, Por hora, Por día y Extremos.
+La app tiene dos fuentes: ESP32 (lecturas simuladas en Firebase) y Clima de Costa Rica (Open-Meteo). Las fechas se interpretan en `America/Costa_Rica`, independientemente de la zona horaria del teléfono.
 
-## Promedios diarios
+## Por hora y por día
 
-Selecciona fecha inicial y final, elige una variable con los botones y pulsa
-**Consultar promedios diarios**. Ambas fechas se incluyen y se interpretan en
-`America/Costa_Rica`. Se rechazan fechas invertidas y fechas futuras.
+Elige fecha o periodo, marca una o varias variables y pulsa **Consultar**. Por día incluye ambas fechas y rechaza rangos invertidos o futuros. Cambiar las fechas limpia la consulta anterior.
 
-Cada promedio diario usa todas las lecturas numéricas finitas de esa variable
-registradas durante el día; no es el promedio de promedios horarios.
-La cantidad de lecturas puede diferir entre variables si un registro está incompleto.
-Los días sin lecturas se muestran como **Sin datos**, sin sustituirlos por cero.
-Los extremos del resumen son extremos de los promedios diarios del rango,
-no máximos y mínimos de las lecturas individuales.
+Cada variable se calcula sobre sus propias lecturas numéricas finitas. El promedio diario usa las lecturas originales, no los promedios horarios. Un registro incompleto puede contar para temperatura y no para humedad. Los periodos vacíos conservan **Sin datos** y no se sustituyen por cero.
 
-El gráfico de barras tiene una escala por variable, admite valores negativos y
-permite desplazamiento horizontal. La lista detalla fecha, promedio y cantidad.
-Los resultados se actualizan al recibir lecturas nuevas dentro del rango consultado.
-Cambiar las fechas limpia los resultados anteriores y requiere volver a consultar.
+La gráfica aparece con los resultados y permite comparar hasta tres series:
+
+- Temperatura: violeta, línea continua.
+- Humedad: verde azulado, línea continua.
+- Punto de rocío: rosa, línea discontinua.
+
+Temperatura y rocío comparten el eje izquierdo en °C. Si se incluye humedad, utiliza el eje derecho en %. Con humedad sola, el eje izquierdo muestra %. Dos curvas que se cruzan con escalas diferentes no representan valores iguales. La leyenda, los ejes y el resumen conservan sus unidades.
+
+La gráfica solo une periodos consecutivos de cada serie. Una sola hora o día disponible aparece como punto, con margen en la escala. Tocar la gráfica selecciona el periodo; los menús permiten elegir cualquier hora o fecha, incluidas las que no tienen datos.
+
+Por día muestra un resumen de la fecha elegida en lugar de una tarjeta por cada fecha. Cada fila indica variable, promedio y cantidad de lecturas. El CSV conserva el rango completo.
+
+## Filtros
+
+**Filtrar valores atípicos** usa límites inclusivos y editables, sin modificar los registros. No determina si una lectura es real ni detecta anomalías estadísticas. Los límites iniciales son orientativos: temperatura −10 a 50 °C, humedad 0 a 100 % y rocío −30 a 40 °C.
+
+Al comparar varias series, los botones sobre el filtro permiten editar los límites de cada variable. El filtro se aplica por separado: una temperatura excluida no elimina la humedad del mismo registro. Campos vacíos, no numéricos, no finitos o límites invertidos bloquean esa comparación. Se aceptan punto o coma decimal y números negativos.
+
+Los resultados, la gráfica y el CSV usan el mismo conjunto filtrado. Al desactivar el filtro se recuperan los cálculos sobre las lecturas descargadas.
+
+## Extremos
+
+**Consultar máximos y mínimos** analiza una variable de todo el historial de la fuente elegida. Presenta mínimo, máximo, fechas, cantidades, amplitud y repeticiones. En un empate muestra la primera fecha; una sola lectura puede ser ambos extremos.
+
+En Firebase se descargan las lecturas de `lecturas/equipo01` y se escuchan los cambios mientras la pantalla está abierta. Los registros con fecha inválida se omiten con aviso. Esta consulta está pensada para el volumen académico; historiales grandes requerirían agregación o paginación.
+
+## Exportación CSV
+
+**Exportar CSV** abre el selector de archivos de Android sin permiso general de almacenamiento. El contenido queda fijado al pulsar el botón, aunque entren nuevas lecturas mientras se elige el destino.
+
+- Por hora: 24 filas por variable seleccionada, con horas vacías incluidas.
+- Por día: una fila por día y variable seleccionada.
+- Extremos: mínimo y máximo de la variable elegida.
+
+Se utiliza UTF-8 con BOM, separador `;`, coma decimal y tres decimales. Los valores ausentes quedan vacíos con estado **Sin datos** y cantidad cero. No se habilita la exportación si no hay ningún valor válido. Cada fila identifica variable, unidad, fecha y cantidad; con filtro activo incluye sus límites. La fuente meteorológica añade zona, coordenadas, proveedor y licencia.
+
+## Clima de Costa Rica
+
+**Cambiar** permite buscar por lugar o provincia entre diez zonas del catálogo. No se solicita GPS. La zona se guarda en preferencias y cada historial utiliza un archivo privado distinto. Se mantiene el nombre `clima_santa_clara.json` para recuperar las descargas existentes de Santa Clara.
+
+### Inicio: condiciones y pronóstico
+
+Una petición a `/v1/forecast` solicita:
+
+- `current`: temperatura, humedad, rocío, código WMO e indicador de día/noche.
+- `hourly`: las tres variables, código WMO y probabilidad de precipitación para diez días. La interfaz presenta las próximas 24 horas.
+- `daily`: temperatura mínima y máxima, condición y probabilidad máxima de precipitación para diez días, incluido hoy.
+
+Se solicitan °C, porcentajes y tiempo Unix. El parser valida unidades, tamaños y fechas ordenadas. Los segundos Unix se convierten a milisegundos sin sumar de nuevo UTC−6. Un valor ausente queda sin dato; un código WMO ausente o desconocido no se presenta como cielo despejado.
+
+La temperatura grande corresponde al dato actual del modelo. Las filas diarias muestran mínimos y máximos previstos; sus barras comparten el rango térmico del periodo. Los porcentajes junto a los iconos y al final de las columnas horarias representan probabilidad de lluvia.
+
+El pronóstico se actualiza cada quince minutos mientras Inicio está visible. Cambiar de pantalla, fuente, abrir Información o enviar la app al fondo pausa las consultas periódicas. **Actualizar clima** permite consultar manualmente y no duplica una petición en curso. Una descarga iniciada puede finalizar, pero su resultado siempre queda asociado a su zona.
+
+Los pronósticos se conservan en memoria durante la sesión. Si falla una actualización, se mantiene el resultado de esa zona con aviso. Se identifican datos de más de treinta minutos como anteriores. Una nueva sesión requiere conexión para obtener un pronóstico.
+
+### Historial: consultas académicas
+
+**Cargar historial** solicita las 240 horas de los diez días completos anteriores. Hoy y el pronóstico futuro quedan excluidos. La copia se valida y se escribe con `AtomicFile`; un error de red, formato o guardado conserva el archivo anterior.
+
+Por hora propone el último día descargado, Por día el rango completo y Extremos todo el historial guardado. Un dato por hora produce un promedio horario igual a ese dato. Cambiar de zona limpia la consulta y muestra únicamente su historial; si falta una copia, aparece el control de descarga.
+
+Los valores de Open-Meteo son estimaciones meteorológicas para coordenadas aproximadas. La celda del modelo puede estar cerca del lugar solicitado y no equivale a una estación local. Créditos y licencia CC BY 4.0 están en Información y en los CSV.
 
 ## Firebase
 
-Ruta: `lecturas/equipo01`. Cada registro contiene `ts` numérico (milisegundos Unix),
-`temperatura`, `humedad` y `puntoRocio`. Las consultas de fecha requieren un índice
-`.indexOn: ["ts"]` en esa ruta y permisos de lectura apropiados.
-No se escriben registros desde estas pantallas ni se cambian las reglas desde el código.
+La ruta `lecturas/equipo01` contiene `ts` en milisegundos Unix y las variables `temperatura`, `humedad` y `puntoRocio`. Las consultas de fecha necesitan permisos de lectura y `.indexOn: ["ts"]`. Las pantallas de consulta no escriben datos ni cambian reglas.
 
-## Comprobar en Windows
+## Información y apariencia
 
-Desde la carpeta `APP-MOVIL/android`:
+El botón ⓘ abre la ayuda sobre la pantalla actual. Volver o Atrás conservan fechas, variables, filtros y resultados. El selector CLARO/OSCURO mantiene la paleta del proyecto y guarda la preferencia.
+
+## Comprobación
+
+Desde `APP-MOVIL/android`, en Windows:
 
 ```powershell
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest
 ```
 
-Para la prueba manual, consulta un día con registros, un rango que lo incluya junto
-con días vacíos, y un rango invertido (el botón debe quedar deshabilitado).
-Cambia de variable y comprueba que se muestran sus propios resultados.
-Para comprobar varios días, selecciona la fuente Santa Clara y descarga el historial de Open-Meteo, o utiliza un historial en Firebase.
+Las pruebas unitarias cubren cálculos, filtros independientes, escalas por unidad, CSV, respuestas incompletas y fechas y unidades del pronóstico. La compilación y las pruebas no verifican la interacción visual del teléfono.
 
-## Máximos y mínimos históricos
+Recorrido manual recomendado:
 
-Selecciona una variable y pulsa **Consultar máximos y mínimos**. Se analizan las
-lecturas originales de todo `lecturas/equipo01`, con fecha y hora de Costa Rica,
-por separado para cada variable. Los registros sin fecha numérica válida se
-omiten con aviso; los valores ausentes y no finitos no cuentan para esa variable.
-Se muestran mínimo, máximo, fechas, cantidad válida y amplitud del rango.
-Cuando hay empates se muestra la fecha más antigua y el número de repeticiones.
-Una sola lectura puede ser a la vez mínimo y máximo.
-
-Esta consulta descarga el historial completo y escucha nuevos cambios mientras
-la pantalla está abierta. Es adecuada para el conjunto de muestra del proyecto;
-un historial de gran volumen requerirá agregación o paginación.
-
-Prueba manual: consulta con las lecturas actuales y cambia los valores del DHT22
-en Wokwi para enviar una nueva lectura. Comprueba los extremos contra Firebase.
-Cambia de variable y verifica que sus extremos y cantidades corresponden.
-
-## Apariencia
-
-La navegación inferior ofrece Inicio, Por hora, Por día y Extremos.
-La cabecera usa un degradado azul/violeta y las consultas se presentan en tarjetas
-redondeadas. Inicio destaca temperatura y muestra humedad, punto de rocío y fecha.
-El interruptor **Modo oscuro** guarda la preferencia localmente y la conserva al
-cerrar la app; en el primer inicio usa el tema del sistema. La apariencia no usa
-los colores dinámicos del teléfono para conservar la paleta del proyecto.
-
-Comprobación visual pendiente en el emulador: recorrer las cuatro pantallas,
-activar/desactivar el modo oscuro, reiniciar la app y verificar la preferencia,
-y probar un tamaño de fuente mayor desde la configuración de Android.
-
-## Selector de hora
-
-En **Por hora**, el menú **Hora del promedio** permite elegir cualquiera de las
-24 franjas (00:00–00:59 a 23:00–23:59). La franja se conserva al cambiar
-de variable con los botones. Se muestra solo el promedio y cantidad de la franja elegida,
-o **Sin datos**; los gráficos conservan la evolución de todo el día.
-Cambiar de hora no requiere una nueva descarga ni cambia los cálculos.
-
-## Botones de variables y gráficos plegables
-
-Las tres consultas tienen botones de Temperatura, Humedad y Punto de rocío.
-Solo una variable está activa; por defecto es Temperatura. Al cambiarla se
-reutilizan los registros descargados y no se modifica la consulta a Firebase.
-Los gráficos horarios y diarios están plegados bajo **Ver gráfico**.
-Cuando solo hay un promedio horario, se muestra un punto con ejes y un aviso
-de que aún no hay evolución para comparar, sin dibujar una línea inexistente.
-
-## Gráficos con ejes
-
-Los gráficos horarios muestran el periodo entre la primera y última hora con datos,
-escala vertical con unidades, cuadrícula y etiquetas de horas. Las horas intermedias
-vacías no se conectan. Con seis puntos o menos se rotulan también los valores.
-Tocar un punto elige la hora en la tarjeta de resultados; el menú sigue permitiendo
-consultar cualquiera de las 24 horas. Una sola hora se representa como punto
-etiquetado con aviso de que aún no hay evolución. Las escalas tienen margen incluso
-si los valores son constantes.
-
-Los gráficos diarios muestran fechas, valores sobre las barras y escala vertical.
-Las barras parten de cero, también para valores negativos. Los días vacíos se
-representan con un guion. Todos los valores siguen disponibles en texto.
-La comprobación de legibilidad, selección por toque y modo oscuro en el emulador
-se realiza además de la compilación y pruebas de cálculo.
-
-El selector de tema usa una cápsula con sol/luna y etiquetas CLARO/OSCURO.
-El control circular se desplaza al cambiar el modo; toda la cápsula es pulsable.
-Expone el estado como interruptor para lectores de pantalla y mantiene la misma
-preferencia local de apariencia. Comprobar la animación y contraste en el emulador.
-
-## Exportar CSV
-
-Después de consultar datos válidos, **Exportar CSV** abre el selector de archivos
-Android. El usuario elige nombre y ubicación sin conceder acceso general al
-almacenamiento. Se informa guardado correcto, cancelación o fallo. La exportación
-usa una copia de los resultados al pulsar el botón; nuevos registros no cambian
-el contenido mientras se elige el destino.
-
-- Por hora: todas las 24 franjas del día consultado, de la variable seleccionada.
-- Por día: todos los días del rango consultado, de la variable seleccionada.
-- Extremos: mínimo y máximo, primera fecha de cada extremo, repeticiones y cantidad
-  de lecturas válidas.
-
-Los campos incluyen unidades y zona `America/Costa_Rica`. El archivo usa UTF-8
-con BOM, separador punto y coma, coma decimal y tres decimales; la pantalla redondea
-a un decimal. Los promedios ausentes quedan vacíos con estado **Sin datos** y cero
-lecturas; un promedio de cero se escribe numéricamente. No se exportan consultas
-sin ninguna lectura válida. Si Excel no separa las columnas automáticamente,
-importar desde texto/CSV indicando UTF-8 y separador punto y coma.
-
-Prueba manual pendiente: guardar CSV de cada consulta, cancelar el selector,
-abrir los archivos y comparar cifras y fechas con los resultados de la app.
-La exportación no sube datos a Firebase ni a otro servicio.
-
-## Filtro de valores atípicos
-
-Las tres consultas tienen **Filtrar valores atípicos**, apagado inicialmente.
-Se filtra por límites configurables e inclusivos de la variable seleccionada;
-no es un detector estadístico ni una validación de que los datos sean reales.
-Los límites iniciales sirven para demostrar el filtro: temperatura -10 a 50 °C,
-humedad 0 a 100 %, punto de rocío -30 a 40 °C. El equipo debe ajustarlos y justificar
-los que use para su conjunto ambiental. Se aceptan punto o coma decimal y negativos.
-
-Cada variable conserva sus límites mientras la pantalla está abierta. Se rechazan
-campos vacíos, valores no numéricos/no finitos y mínimo mayor que máximo.
-El resumen distingue lecturas utilizadas, valores fuera de límites y datos ausentes
-(o no válidos). Un valor atípico de temperatura no excluye la humedad del mismo registro.
-No se escribe ni borra nada de Firebase. El filtro no altera la lectura actual de Inicio.
-
-Promedios, extremos, gráficos y CSV usan el mismo conjunto filtrado. Los CSV con
-filtro activo agregan columnas `filtro`, `limite_inferior` y `limite_superior`.
-Si ninguna lectura pasa el filtro, se muestra ausencia de datos y se deshabilita la
-exportación; no se inventan promedios cero. Al desactivar se recuperan los resultados
-sin el filtro, usando los registros originales descargados.
-
-Prueba manual: consulta una variable con valores de prueba, activa el filtro,
-reduce el límite máximo para excluir una lectura y comprueba cantidades, promedio,
-gráfico y CSV. Desactiva el filtro y verifica que reaparece el resultado original.
-Prueba límites invertidos y cambia de variable para comprobar sus límites propios.
-
-## Fuente meteorológica: Santa Clara
-
-**Fuente de datos** permite elegir ESP32 (Firebase) o Santa Clara (Open-Meteo).
-La segunda descarga diez días completos anteriores al día actual de Costa Rica,
-con un dato por hora de temperatura, humedad y punto de rocío para las coordenadas
-aproximadas 10.36, −84.51. Utiliza datos modelados del endpoint `/v1/forecast`
-con fechas de inicio y fin; excluye hoy y no incorpora pronósticos futuros.
-
-Los tiempos Unix se convierten de segundos a milisegundos sin sumar de nuevo el
-desplazamiento horario. Se valida que la respuesta contenga 240 horas ordenadas y
-las unidades esperadas; los valores nulos se omiten por variable. Las consultas,
-los filtros y los gráficos reutilizan los cálculos existentes. Los CSV agregan
-fuente, ubicación, coordenadas solicitadas, URL del proveedor, licencia y tratamiento.
-
-La respuesta válida se conserva en un archivo privado con escritura atómica y se
-recupera al iniciar. Las consultas del periodo guardado funcionan sin conexión.
-Un fallo de descarga conserva la copia anterior y muestra un aviso. Cambiar de
-fuente limpia la consulta visible; la aplicación utiliza únicamente la fuente elegida.
-La fuente seleccionada se conserva entre sesiones. La descarga se almacena en el teléfono. Datos de Open-Meteo bajo CC BY 4.0,
-con enlaces de atribución en Información y en la documentación.
-
-Comprobación en Android:
-
-1. Seleccionar Santa Clara, cargar los diez días y verificar 240 datos horarios.
-2. Consultar Por día con el rango propuesto: diez días y 24 datos por día si todos
-   los valores están disponibles. Revisar Por hora y Extremos en las tres variables.
-3. Activar el filtro y contrastar resultados, gráficos y columnas de origen del CSV.
-4. Cerrar la app, desconectar internet, abrir de nuevo y consultar el periodo guardado.
-5. Intentar actualizar sin conexión: debe conservarse la copia anterior.
-6. Volver a ESP32 y verificar las lecturas de Firebase con Wokwi.
-
-La compilación y las pruebas con respuestas de ejemplo no sustituyen la prueba
-contra el servicio en vivo ni la comprobación visual en Android.
-
-## Clima actual en Inicio
-
-La fuente Santa Clara consulta `current=temperature_2m,relative_humidity_2m,dew_point_2m`
-en Open-Meteo. Se carga al entrar en Inicio, sujeto al intervalo de consulta, y se
-actualiza automáticamente cada quince minutos mientras la pantalla está visible.
-El botón **Actualizar ahora** permite consultar antes del siguiente intervalo.
-El ciclo de vida de Android detiene las consultas periódicas al enviar la app al
-fondo, y cambiar de pantalla o fuente también detiene esa programación.
-Una solicitud que ya está en curso puede finalizar y conservar su respuesta.
-
-El dato actual conserva la fecha del modelo y la hora de consulta por separado,
-ambas en horario de Costa Rica. Inicio muestra la fecha del dato y el apartado
-Información permite consultar la hora de la última consulta. Los valores ausentes se muestran como Sin dato.
-Si falla la actualización se conserva el último resultado de la sesión y aparece
-un aviso. Los datos de más de treinta minutos se identifican como anteriores.
-La lectura actual no se incorpora al archivo histórico ni a sus consultas o CSV.
-
-Comprobación en Android: seleccionar Santa Clara en Inicio, verificar las tres
-variables y fechas, pulsar Actualizar ahora, probar sin conexión y recuperar la
-conexión. El clima actual debe aparecer aunque aún no se haya descargado el historial.
-Verificar que Por hora, Por día y Extremos siguen usando el periodo histórico.
-
-## Interfaz e Información
-
-El botón ⓘ de la cabecera abre Información a pantalla completa sobre la vista
-actual. Allí se reúnen fuentes, ubicación, horario, frecuencia de actualización,
-detalles de la descarga, cálculos, filtros, exportación y créditos/licencia.
-Cerrar con Volver o Atrás mantiene la consulta y su selección.
-La actualización periódica del clima se pausa mientras Información está abierta.
-
-Las vistas principales conservan los controles, valores, cantidades y avisos
-necesarios; no repiten los créditos ni las explicaciones técnicas. Se omiten los
-mensajes de éxito que duplican resultados. El historial se gestiona en Inicio;
-cuando falta una descarga también aparece el control de carga en las consultas.
-
-Comprobación visual: recorrer las cuatro pantallas en ambos temas, abrir y cerrar
-Información desde una consulta con fecha, hora, variable, filtro y gráfico elegidos,
-y comprobar que la selección se conserva. Revisar los enlaces de Open-Meteo y
-CC BY 4.0, el botón Atrás y la lectura con un tamaño de fuente mayor. Verificar
-que se mantienen los avisos sin conexión, Sin datos y datos antiguos.
+1. Abrir Inicio con Clima de Costa Rica y probar Santa Clara, San José y Liberia. Verificar que cambia el lugar, la temperatura, las condiciones y el pronóstico.
+2. Cargar el historial de dos zonas, alternar entre ellas y comprobar la procedencia del CSV. Cambiar de zona durante una descarga para comprobar que su respuesta no aparece en otro lugar.
+3. Seleccionar temperatura y humedad en Por hora; añadir rocío. Verificar leyenda, ejes, colores y selección por toque.
+4. Consultar un rango diario. Elegir fechas desde la gráfica y el menú: debe aparecer un solo resumen de fecha, con una fila por variable.
+5. Editar un filtro y comparar sus cantidades con el CSV. Desactivarlo y recuperar los resultados originales.
+6. Consultar periodos vacíos y una sola lectura. No deben aparecer promedios inventados ni líneas sobre huecos.
+7. Cerrar la app y abrirla sin conexión: los historiales descargados deben estar disponibles. Intentar actualizar y comprobar que se conserva la copia anterior.
+8. Recorrer las pantallas con ambos temas y fuente grande. Abrir y cerrar Información, exportar, cancelar el selector de archivos y revisar el contraste de las gráficas.
+9. Volver a ESP32 y enviar una lectura desde Wokwi. Las consultas Firebase deben seguir actualizándose.

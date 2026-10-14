@@ -4,7 +4,6 @@ import android.app.DatePickerDialog
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -12,13 +11,14 @@ import com.google.firebase.database.*
 import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 @Composable
 internal fun ConsultaPorDia(historial: HistorialClima? = null) {
     var inicio by remember { mutableStateOf(historial?.rango?.inicio ?: LocalDate.now(zonaConsulta)) }
     var fin by remember { mutableStateOf(historial?.rango?.fin ?: LocalDate.now(zonaConsulta)) }
-    var variableElegida by remember { mutableStateOf("temperatura") }
+    var elegidas by remember { mutableStateOf(listOf("temperatura")) }
+    var indiceElegido by remember { mutableIntStateOf(0) }
+    var menuFechas by remember { mutableStateOf(false) }
     var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
     var rangoConsulta by remember { mutableStateOf<RangoFechas?>(null) }
     var datos by remember { mutableStateOf<List<RegistroAmbiental>>(emptyList()) }
@@ -34,11 +34,14 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
         mensaje = ""
     }
 
-    val variableFiltro = variables.first { it.clave == variableElegida }
-    val limitesFiltro = if (filtro.activo) interpretarLimites(filtro.limites.getValue(variableElegida)) else null
-    val filtroValido = !filtro.activo || limitesFiltro != null
-    val filtrados = remember(datos, variableElegida, limitesFiltro) { filtrarLecturas(datos, variableElegida, limitesFiltro) }
-    val datosConsulta = if (filtroValido) filtrados.registros else emptyList()
+    val filtroValido = comparacionValida(elegidas, filtro)
+    val filtrados = remember(datos, elegidas, filtro) { datosComparacion(datos, elegidas, filtro) }
+    val resultados = remember(filtrados, rangoConsulta, filtroValido) {
+        if (!filtroValido || rangoConsulta == null) emptyMap() else filtrados.mapValues { (clave, valor) ->
+            promediosDiarios(valor.registros, rangoConsulta!!, clave)
+        }
+    }
+    LaunchedEffect(rangoConsulta) { indiceElegido = 0 }
 
     DisposableEffect(rangoConsulta, intento, historial) {
         val rango = rangoConsulta
@@ -92,50 +95,47 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
         Text("Periodo", style = MaterialTheme.typography.labelLarge)
         SelectorFechaDiaria("Fecha inicial", inicio) { inicio = it; limpiarResultados() }
         SelectorFechaDiaria("Fecha final", fin) { fin = it; limpiarResultados() }
-        SelectorVariable(variableElegida) { variableElegida = it }
-        ControlFiltro(variableFiltro, filtro) { filtro = it }
+        SelectorVariables(elegidas) { elegidas = it }
+        FiltrosComparacion(elegidas, filtro) { filtro = it }
         error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         Button(enabled = filtroValido && error == null && !cargando, onClick = {
             rangoConsulta = RangoFechas(inicio, fin)
             intento++
-        }) { Text("Consultar promedios diarios") }
-        val variableCsv = variables.first { it.clave == variableElegida }
-        val rangoCsv = rangoConsulta
-        val resultadosCsv = rangoCsv?.let { promediosDiarios(datosConsulta, it, variableElegida) }.orEmpty()
-        BotonExportarCsv("promedios_dia_${rangoCsv?.inicio}_${rangoCsv?.fin}_${variableElegida}${if (historial != null) "_santa_clara" else ""}.csv",
-            if (!cargando && resultadosCsv.any { it.promedio != null }) csvPorDia(variableCsv, resultadosCsv, limitesFiltro, historial?.origen) else null)
-        if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
+        }) { Text("Consultar") }
+        val csv = if (!cargando && filtroValido && resultados.values.any { serie -> serie.any { it.promedio != null } })
+            combinarCsvSeries(variables.filter { it.clave in elegidas }.map { v ->
+                csvPorDia(v, resultados[v.clave].orEmpty(), limitesComparacion(filtro, v.clave), historial?.origen)
+            }) else null
+        BotonExportarCsv("promedios_dia_${rangoConsulta?.inicio}_${rangoConsulta?.fin}${historial?.let { "_${it.ubicacion.id}" }.orEmpty()}.csv", csv)
+        if (filtro.activo && filtroValido && datos.isNotEmpty()) variables.filter { it.clave in elegidas }.forEach { v ->
+            Text(v.nombre, style = MaterialTheme.typography.labelMedium)
+            ResumenFiltro(filtrados.getValue(v.clave), true)
+        }
         if (cargando) CircularProgressIndicator()
         if (mensaje.isNotBlank()) Text(mensaje, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        if (!cargando) rangoConsulta?.let { rango ->
-            Text("Resultados: ${fechaDiaria(rango.inicio)} al ${fechaDiaria(rango.fin)}")
-            variables.filter { it.clave == variableElegida }.forEach { variable ->
-                val resultados = remember(datosConsulta, rango, variable.clave) { promediosDiarios(datosConsulta, rango, variable.clave) }
-                val conDatos = resultados.filter { it.promedio != null }
-                Text(variable.nombre, style = MaterialTheme.typography.titleMedium)
-                Text("${conDatos.size} de ${resultados.size} días con datos válidos.")
-                if (conDatos.isNotEmpty()) {
-                    val valores = conDatos.map { it.promedio!! }
-                    Text("Promedio diario mínimo: ${numeroDiario(valores.min())} ${variable.unidad}")
-                    Text("Promedio diario máximo: ${numeroDiario(valores.max())} ${variable.unidad}")
-                    var mostrarGrafico by remember(rango, variable.clave) { mutableStateOf(false) }
-                    OutlinedButton(onClick = { mostrarGrafico = !mostrarGrafico }) {
-                        Text(if (mostrarGrafico) "Ocultar gráfico" else "Ver gráfico diario")
+        if (!cargando && filtroValido) rangoConsulta?.let { rango ->
+            Text("${fechaDiaria(rango.inicio)} — ${fechaDiaria(rango.fin)}", style = MaterialTheme.typography.titleMedium)
+            val dias = resultados.values.firstOrNull().orEmpty().map { it.fecha }
+            val series = variables.filter { it.clave in elegidas }.map { v ->
+                SerieGrafico(v, resultados[v.clave].orEmpty().mapIndexedNotNull { i, r -> r.promedio?.let { PuntoGrafico(i, it) } })
+            }
+            if (series.any { it.puntos.isNotEmpty() }) GraficoComparacion(series, dias.indices.toList(),
+                dias.map { it.format(DateTimeFormatter.ofPattern("dd/MM")) }, indiceElegido) { indiceElegido = it }
+            if (dias.isNotEmpty()) {
+                Box {
+                    OutlinedButton(onClick = { menuFechas = true }, modifier = Modifier.fillMaxWidth()) {
+                        Text("${fechaDiaria(dias[indiceElegido.coerceIn(dias.indices)])} · Elegir día ▾")
                     }
-                    if (mostrarGrafico) GraficoDiarioClaro(resultados, variable.unidad)
-                }
-                resultados.forEach { resultado ->
-                    Surface(color = MaterialTheme.colorScheme.surfaceVariant, shape = MaterialTheme.shapes.small,
-                        modifier = Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Text(fechaDiaria(resultado.fecha), style = MaterialTheme.typography.labelLarge)
-                            Text(resultado.promedio?.let { "${numeroDiario(it)} ${variable.unidad}" } ?: "Sin datos",
-                                style = MaterialTheme.typography.titleLarge)
-                            Text("${resultado.cantidad} lecturas", style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    DropdownMenu(expanded = menuFechas, onDismissRequest = { menuFechas = false }, modifier = Modifier.heightIn(max = 320.dp)) {
+                        dias.forEachIndexed { indice, fecha ->
+                            DropdownMenuItem(text = { Text(fechaDiaria(fecha)) }, onClick = { indiceElegido = indice; menuFechas = false })
                         }
                     }
                 }
+                DetalleComparacion(elegidas, resultados.mapValues { (_, serie) ->
+                    val r = serie.getOrNull(indiceElegido)
+                    r?.promedio to (r?.cantidad ?: 0)
+                })
             }
         }
     }
@@ -154,4 +154,3 @@ private fun SelectorFechaDiaria(etiqueta: String, fecha: LocalDate, alElegir: (L
 }
 
 private fun fechaDiaria(fecha: LocalDate) = fecha.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-private fun numeroDiario(valor: Double) = String.format(Locale.getDefault(), "%.1f", valor)

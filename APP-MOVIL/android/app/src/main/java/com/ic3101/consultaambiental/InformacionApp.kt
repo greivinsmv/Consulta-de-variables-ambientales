@@ -18,7 +18,7 @@ import java.time.Instant
 import java.time.format.DateTimeFormatter
 
 @Composable
-internal fun InformacionApp(historial: HistorialClima?, actual: ClimaActual?, alCerrar: () -> Unit) {
+internal fun InformacionApp(historial: HistorialClima?, actual: ClimaActual?, ubicacion: ZonaClimatica = santaClara, alCerrar: () -> Unit) {
     val enlaces = LocalUriHandler.current
     fun fecha(ts: Long) = Instant.ofEpochMilli(ts).atZone(zonaConsulta)
         .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
@@ -38,13 +38,14 @@ internal fun InformacionApp(historial: HistorialClima?, actual: ClimaActual?, al
                     TarjetaInformacion("Fuentes de datos") {
                         Text("ESP32", style = MaterialTheme.typography.titleSmall)
                         Text("Lecturas de un DHT22 simulado en Wokwi, almacenadas en Firebase XD. La app recibe las lecturas nuevas automáticamente.")
-                        Text("Santa Clara, San Carlos", style = MaterialTheme.typography.titleSmall)
-                        Text("Estimaciones meteorológicas de Open-Meteo para la zona. Ubicación aproximada: 10.36, −84.51.")
-                        Text("Los resultados utilizan la fuente seleccionada en la app.")
+                        Text("${ubicacion.nombre}, ${ubicacion.region}", style = MaterialTheme.typography.titleSmall)
+                        Text("Estimaciones y pronósticos de Open-Meteo. Coordenadas solicitadas: ${ubicacion.latitud}, ${ubicacion.longitud}.")
+                        Text("Los resultados utilizan la fuente y la zona seleccionadas. Las coordenadas son aproximadas y el modelo puede utilizar una celda cercana. No son mediciones de una estación local.")
                     }
                     TarjetaInformacion("Actualización e historial") {
-                        Text("Inicio consulta el clima actual cada 15 minutos mientras esa pantalla está visible. Actualizar ahora permite consultarlo manualmente.")
-                        Text("El historial cubre los 10 días completos anteriores: hoy queda excluido. Incluye 24 datos horarios por día y se conserva en el teléfono para consultar sin conexión.")
+                        Text("Inicio consulta el clima actual cada 15 minutos mientras esa pantalla está visible. Actualizar clima permite consultarlo manualmente.")
+                        Text("El pronóstico muestra las próximas 24 horas y diez días, incluido hoy. Las condiciones usan códigos WMO y la lluvia es una probabilidad, no una cantidad medida.")
+                        Text("El historial se guarda por zona y cubre los 10 días completos anteriores: hoy queda excluido. Incluye 24 datos horarios por día y se conserva en el teléfono para consultar sin conexión.")
                         Text("Actualizar historial reemplaza la copia guardada con el nuevo periodo. Si falla, se conserva la última descarga válida.")
                         Text("Horario de todas las fechas: Costa Rica (UTC−6).")
                         actual?.let { Text("Última consulta del clima: ${fecha(it.consultadoEn)}", style = MaterialTheme.typography.bodySmall) }
@@ -55,7 +56,7 @@ internal fun InformacionApp(historial: HistorialClima?, actual: ClimaActual?, al
                     }
                     TarjetaInformacion("Consultas y gráficos") {
                         Text("Cada promedio usa los valores numéricos válidos de la variable seleccionada. Por día incluye ambas fechas y usa las lecturas originales, sin promediar promedios horarios.")
-                        Text("Las horas y días vacíos se muestran como Sin datos. Los gráficos no unen horas sin lecturas.")
+                        Text("Las horas y días vacíos se muestran como Sin datos. Los gráficos no unen periodos sin lecturas. Puedes seleccionar varias variables: temperatura y rocío usan el eje izquierdo en °C; humedad usa el eje derecho en % cuando se compara con ellas. La posición de dos curvas con unidades diferentes no indica que sus valores sean iguales.")
                         Text("Extremos muestra los valores individuales mínimo y máximo. Si hay empates, se indica su cantidad y la primera fecha registrada.")
                         Text("En la fuente meteorológica hay un dato por hora; el promedio horario coincide con ese dato.")
                     }
