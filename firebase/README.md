@@ -102,3 +102,11 @@ La primera ejecución descarga el emulador oficial. Los tests utilizan `demo-con
 6. Abrir la app y comprobar Inicio, consultas y CSV sin iniciar sesión.
 
 Si una contraseña o token se comparte por error, cambia la contraseña de la cuenta del dispositivo y revoca sus sesiones en Firebase Authentication. No basta con borrar el texto de Git o de Wokwi. Retirar temporalmente el permiso del UID en las reglas bloquea de inmediato sus escrituras.
+
+## Verificación realizada
+
+El 14 de octubre de 2026 se comprobó el envío desde Wokwi con un ID token de la cuenta del ESP32: devolvió HTTP 200 y creó una lectura en Realtime Database. Tras publicar las reglas con su UID, una petición POST sin token desde PowerShell fue rechazada con `Permission denied`.
+
+Estas pruebas confirman el envío autenticado y el bloqueo de escritura anónima en el proyecto real. La batería de tests del emulador sigue pendiente: el entorno de desarrollo bloqueó la descarga del emulador desde Google Storage. No se ha comprobado todavía en ejecución cada caso de edición, borrado, otra cuenta y validación de campos.
+
+El lector serial del firmware mantenido aparte se ajustó para tokens largos: configura un búfer de 8192 bytes antes de iniciar el puerto y vacía los bytes disponibles sin una demora por carácter. No imprime el token; informa su recepción y el resultado HTTP.
