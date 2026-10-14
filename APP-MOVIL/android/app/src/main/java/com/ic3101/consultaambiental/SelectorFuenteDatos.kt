@@ -12,7 +12,7 @@ internal fun SelectorFuenteDatos(fuente: String, alElegir: (String) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Fuente de datos", style = MaterialTheme.typography.labelLarge)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("esp32" to "ESP32", "clima" to "Santa Clara").forEach { (clave, nombre) ->
+            listOf("esp32" to "ESP32", "clima" to "Clima de Costa Rica").forEach { (clave, nombre) ->
                 if (fuente == clave) Button(onClick = { alElegir(clave) }, modifier = Modifier.weight(1f),
                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)) { Text(nombre) }
                 else OutlinedButton(onClick = { alElegir(clave) }, modifier = Modifier.weight(1f),
