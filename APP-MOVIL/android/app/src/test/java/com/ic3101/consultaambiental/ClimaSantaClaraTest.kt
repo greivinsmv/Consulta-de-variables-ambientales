@@ -83,6 +83,15 @@ class ClimaSantaClaraTest {
         assertEquals(130, filtrados.excluidos)
         assertTrue(promediosDiarios(filtrados.registros, rango, "temperatura").all { it.promedio == 25.0 })
     }
+    @Test fun interpretarOtraZonaConservaSuProcedenciaEnLosResultadosYElCsv() {
+        val zona = zonasClimaticas.first { it.id == "san_jose" }
+        val datos = interpretarClima(respuesta().toString(), rango, descargadoEn, zona)
+        assertEquals(zona, datos.ubicacion)
+        val csv = csvPorDia(variables.first(), promediosDiarios(datos.registros, rango, "temperatura"), origen = datos.origen)
+        assertTrue(csv.contains("San José, San José, Costa Rica"))
+        assertTrue(csv.contains("\"9,930\";\"-84,080\""))
+        assertFalse(csv.contains("Santa Clara"))
+    }
     @Test fun lasTresExportacionesIdentificanFuenteUbicacionLicenciaYFiltro() {
         val datos = interpretarClima(respuesta().toString(), rango, descargadoEn)
         val variable = variables.first()

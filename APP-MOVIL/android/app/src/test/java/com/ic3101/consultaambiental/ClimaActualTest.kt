@@ -12,13 +12,13 @@ class ClimaActualTest {
         .put("current", JSONObject().put("time", fecha / 1000).put("interval", 900)
             .put("temperature_2m", 24.1).put("relative_humidity_2m", 94).put("dew_point_2m", 23.2))
 
-    @Test fun consultaLasTresVariablesActualesSinSolicitarElHistorial() {
-        val url = urlClimaActual()
+    @Test fun consultaLasTresVariablesActualesJuntoAlPronostico() {
+        val url = urlPronostico(santaClara)
         assertTrue(url.contains("latitude=10.36&longitude=-84.51"))
         assertTrue(url.contains("current=temperature_2m,relative_humidity_2m,dew_point_2m"))
         assertTrue(url.contains("timeformat=unixtime&timezone=America%2FCosta_Rica"))
         assertFalse(url.contains("start_date"))
-        assertFalse(url.contains("hourly="))
+        assertTrue(url.contains("hourly="))
     }
     @Test fun conservaFechaDelModeloYFechaDeConsultaComoTiemposDistintos() {
         val consultado = fecha + 5 * 60 * 1000

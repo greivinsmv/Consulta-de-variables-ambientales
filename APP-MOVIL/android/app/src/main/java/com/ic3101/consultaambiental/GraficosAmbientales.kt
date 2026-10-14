@@ -3,14 +3,11 @@ package com.ic3101.consultaambiental
 import android.graphics.Paint
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
@@ -18,7 +15,6 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.math.abs
 
@@ -32,102 +28,117 @@ internal fun escalaGrafico(valores: List<Double>, incluirCero: Boolean = false):
 }
 private fun numeroEje(valor: Double) = String.format(Locale.getDefault(), "%.1f", valor)
 
+
+internal data class PuntoGrafico(val indice: Int, val valor: Double)
+internal data class SerieGrafico(val variable: Variable, val puntos: List<PuntoGrafico>)
+
+/**
+ * Temperatura y rocío comparten escala en °C. Humedad usa otra escala en %.
+ * Una serie sin datos no participa en el cálculo de su escala.
+ */
+internal fun escalasComparacion(series: List<SerieGrafico>): Map<String, EscalaGrafico> =
+    series.groupBy { it.variable.unidad }.mapNotNull { (unidad, grupo) ->
+        val valores = grupo.flatMap { it.puntos }.map { it.valor }
+        if (valores.isEmpty()) null else unidad to escalaGrafico(valores)
+    }.toMap()
+
+/**
+ * Gráfica compartida por las consultas horarias y diarias.
+ * Los índices representan horas o días consecutivos: solo unimos vecinos,
+ * de modo que una fecha sin lecturas deje un hueco visible en su serie.
+ */
 @Composable
-internal fun GraficoHorario(resultados: List<PromedioHora>, unidad: String, elegida: Int, alElegir: (Int) -> Unit) {
-    val escala = escalaGrafico(resultados.map { it.promedio })
-    val color = MaterialTheme.colorScheme.primary
+internal fun GraficoComparacion(
+    series: List<SerieGrafico>,
+    indices: List<Int>,
+    etiquetas: List<String>,
+    elegido: Int,
+    alElegir: (Int) -> Unit
+) {
+    val escalas = escalasComparacion(series)
+    if (escalas.isEmpty() || indices.isEmpty()) return
+    val colores = series.associate { it.variable.clave to colorVariable(it.variable.clave) }
     val texto = MaterialTheme.colorScheme.onSurfaceVariant
     val rejilla = MaterialTheme.colorScheme.outlineVariant
     val superficie = MaterialTheme.colorScheme.surface
-    val primera = resultados.first().hora
-    val ultima = resultados.last().hora
-    Text("Promedio por hora · $unidad", style = MaterialTheme.typography.titleSmall)
-    Canvas(Modifier.fillMaxWidth().height(240.dp)
-        .semantics { contentDescription = resultados.joinToString { "${it.hora}:00, ${numeroEje(it.promedio)} $unidad" } }
-        .pointerInput(resultados) {
-            detectTapGestures { toque ->
-                val izquierda = 58.dp.toPx()
-                val ancho = size.width - izquierda - 18.dp.toPx()
-                val hora = primera + ((toque.x - izquierda) / ancho) * (ultima - primera)
-                alElegir(resultados.minBy { abs(it.hora - hora) }.hora)
-            }
-        }) {
-        val izquierda = 58.dp.toPx(); val derecha = size.width - 18.dp.toPx()
-        val arriba = 24.dp.toPx(); val abajo = size.height - 38.dp.toPx()
-        val pintura = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = texto.toArgb(); textSize = 11.sp.toPx() }
-        fun y(valor: Double) = abajo - (abajo - arriba) * ((valor - escala.minimo) / (escala.maximo - escala.minimo)).toFloat()
-        fun x(hora: Int) = if (primera == ultima) (izquierda + derecha) / 2 else
-            izquierda + (derecha - izquierda) * (hora - primera) / (ultima - primera)
-        for (i in 0..3) {
-            val valor = escala.minimo + (escala.maximo - escala.minimo) * i / 3
-            val altura = y(valor)
-            drawLine(rejilla, Offset(izquierda, altura), Offset(derecha, altura), 1.dp.toPx())
-            pintura.textAlign = Paint.Align.RIGHT
-            drawContext.canvas.nativeCanvas.drawText(numeroEje(valor), izquierda - 8.dp.toPx(), altura + 4.dp.toPx(), pintura)
-        }
-        val marcas = if (ultima - primera <= 3) (primera..ultima).toList() else listOf(primera, (primera + ultima) / 2, ultima)
-        pintura.textAlign = Paint.Align.CENTER
-        marcas.distinct().forEach { hora ->
-            drawContext.canvas.nativeCanvas.drawText(String.format(Locale.getDefault(), "%02d:00", hora), x(hora), abajo + 24.dp.toPx(), pintura)
-        }
-        resultados.zipWithNext().forEach { (a,b) ->
-            if (b.hora == a.hora + 1) drawLine(color, Offset(x(a.hora),y(a.promedio)),Offset(x(b.hora),y(b.promedio)),2.dp.toPx())
-        }
-        resultados.forEach { r ->
-            val punto = Offset(x(r.hora),y(r.promedio))
-            if (r.hora == elegida) drawCircle(color.copy(alpha=.16f),10.dp.toPx(),punto)
-            drawCircle(color,4.dp.toPx(),punto)
-            drawCircle(superficie,1.5.dp.toPx(),punto)
-            if (resultados.size <= 6) {
-                pintura.textAlign = when(r.hora) { primera -> Paint.Align.LEFT; ultima -> Paint.Align.RIGHT; else -> Paint.Align.CENTER }
-                drawContext.canvas.nativeCanvas.drawText(numeroEje(r.promedio),punto.x,punto.y-12.dp.toPx(),pintura)
-            }
-        }
-    }
-    Text(if (resultados.size == 1) "Una sola hora con datos."
-        else "Toca un punto para elegir su hora.",
-        style = MaterialTheme.typography.bodySmall, color = texto)
-}
+    val dosEjes = escalas.size > 1
+    val unidadIzquierda = if ("°C" in escalas) "°C" else "%"
+    val primera = indices.first()
+    val ultima = indices.last()
 
-@Composable
-internal fun GraficoDiarioClaro(resultados: List<PromedioDia>, unidad: String) {
-    val validos = resultados.mapNotNull { it.promedio }
-    val escala = escalaGrafico(validos, incluirCero = true)
-    val color = MaterialTheme.colorScheme.primary
-    val texto = MaterialTheme.colorScheme.onSurfaceVariant
-    val rejilla = MaterialTheme.colorScheme.outlineVariant
-    Text("Promedio diario · $unidad", style = MaterialTheme.typography.titleSmall)
-    Text("Desliza para ver las fechas.", style = MaterialTheme.typography.bodySmall, color = texto)
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val ancho = maxOf(maxWidth, (80 + resultados.size * 64).dp)
-        Box(Modifier.horizontalScroll(rememberScrollState())) {
-            Canvas(Modifier.width(ancho).height(240.dp).semantics {
-                contentDescription = resultados.joinToString { "${it.fecha}: ${it.promedio?.let(::numeroEje) ?: "Sin datos"} $unidad" }
-            }) {
-                val izquierda = 58.dp.toPx(); val derecha = size.width - 8.dp.toPx()
-                val arriba = 24.dp.toPx(); val abajo = size.height - 38.dp.toPx()
-                val pintura = Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = texto.toArgb(); textSize = 11.sp.toPx() }
-                fun y(valor: Double) = abajo - (abajo-arriba)*((valor-escala.minimo)/(escala.maximo-escala.minimo)).toFloat()
-                for (i in 0..3) {
-                    val valor = escala.minimo + (escala.maximo-escala.minimo)*i/3
-                    drawLine(rejilla,Offset(izquierda,y(valor)),Offset(derecha,y(valor)),1.dp.toPx())
-                    pintura.textAlign = Paint.Align.RIGHT
-                    drawContext.canvas.nativeCanvas.drawText(numeroEje(valor),izquierda-8.dp.toPx(),y(valor)+4.dp.toPx(),pintura)
-                }
-                drawLine(texto.copy(alpha=.6f),Offset(izquierda,y(0.0)),Offset(derecha,y(0.0)),1.dp.toPx())
-                val paso = (derecha-izquierda)/resultados.size
-                resultados.forEachIndexed { i,r ->
-                    val x = izquierda + paso*(i+.5f)
-                    pintura.textAlign = Paint.Align.CENTER
-                    drawContext.canvas.nativeCanvas.drawText(r.fecha.format(DateTimeFormatter.ofPattern("dd/MM")),x,abajo+24.dp.toPx(),pintura)
-                    r.promedio?.let { valor ->
-                        val alto = abs(y(valor)-y(0.0))
-                        if (alto == 0f) drawLine(color,Offset(x-paso*.22f,y(0.0)),Offset(x+paso*.22f,y(0.0)),3.dp.toPx())
-                        else drawRoundRect(color,Offset(x-paso*.22f,minOf(y(valor),y(0.0))),Size(paso*.44f,alto),androidx.compose.ui.geometry.CornerRadius(4.dp.toPx()))
-                        drawContext.canvas.nativeCanvas.drawText(numeroEje(valor),x,if(valor>=0) y(valor)-8.dp.toPx() else y(valor)+16.dp.toPx(),pintura)
-                    } ?: drawContext.canvas.nativeCanvas.drawText("—",x,y(0.0)-8.dp.toPx(),pintura)
-                }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        series.forEach { serie ->
+            Row(Modifier.weight(1f), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Canvas(Modifier.size(8.dp)) { drawCircle(colores.getValue(serie.variable.clave)) }
+                Text(serie.variable.nombre, Modifier.padding(start = 5.dp),
+                    style = MaterialTheme.typography.labelSmall, color = colores.getValue(serie.variable.clave))
             }
         }
     }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(unidadIzquierda, style = MaterialTheme.typography.labelSmall, color = texto)
+        if (dosEjes) Text("% · eje derecho", style = MaterialTheme.typography.labelSmall, color = colores.getValue("humedad"))
+    }
+    Canvas(Modifier.fillMaxWidth().height(240.dp).semantics {
+        contentDescription = series.joinToString(". ") { serie ->
+            serie.variable.nombre + ": " + serie.puntos.joinToString { punto ->
+                "${etiquetas[indices.indexOf(punto.indice)]}: ${numeroEje(punto.valor)} ${serie.variable.unidad}"
+            }
+        }
+    }.pointerInput(indices) {
+        detectTapGestures { toque ->
+            val izquierda = 44.dp.toPx()
+            val derecha = size.width - (if (dosEjes) 42.dp else 14.dp).toPx()
+            val proporcion = ((toque.x - izquierda) / (derecha - izquierda)).coerceIn(0f, 1f)
+            val indice = primera + proporcion * (ultima - primera)
+            alElegir(indices.minBy { abs(it - indice) })
+        }
+    }) {
+        val izquierda = 44.dp.toPx()
+        val derecha = size.width - (if (dosEjes) 42.dp else 14.dp).toPx()
+        val arriba = 18.dp.toPx()
+        val abajo = size.height - 32.dp.toPx()
+        val pintura = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = texto.toArgb(); textSize = 10.sp.toPx() }
+        fun x(indice: Int): Float = if (primera == ultima) (izquierda + derecha) / 2 else
+            izquierda + (derecha - izquierda) * (indice - primera) / (ultima - primera)
+        fun y(valor: Double, unidad: String): Float {
+            val escala = escalas.getValue(unidad)
+            return abajo - (abajo - arriba) * ((valor - escala.minimo) / (escala.maximo - escala.minimo)).toFloat()
+        }
+        for (i in 0..4) {
+            val altura = abajo - (abajo - arriba) * i / 4
+            drawLine(rejilla.copy(alpha = .65f), Offset(izquierda, altura), Offset(derecha, altura), 1.dp.toPx())
+            escalas.forEach { (unidad, escala) ->
+                val valor = escala.minimo + (escala.maximo - escala.minimo) * i / 4
+                val aLaIzquierda = unidad == unidadIzquierda
+                pintura.textAlign = if (aLaIzquierda) Paint.Align.RIGHT else Paint.Align.LEFT
+                drawContext.canvas.nativeCanvas.drawText(numeroEje(valor),
+                    if (aLaIzquierda) izquierda - 6.dp.toPx() else derecha + 6.dp.toPx(), altura + 3.dp.toPx(), pintura)
+            }
+        }
+        if (elegido in indices) drawLine(texto.copy(alpha = .25f), Offset(x(elegido), arriba), Offset(x(elegido), abajo),
+            1.dp.toPx(), pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx())))
+        val marcas = if (indices.size <= 4) indices.indices.toList() else listOf(0, indices.size / 3, 2 * indices.size / 3, indices.lastIndex)
+        marcas.distinct().forEach { i ->
+            pintura.textAlign = when (i) { 0 -> Paint.Align.LEFT; indices.lastIndex -> Paint.Align.RIGHT; else -> Paint.Align.CENTER }
+            drawContext.canvas.nativeCanvas.drawText(etiquetas[i], x(indices[i]), abajo + 23.dp.toPx(), pintura)
+        }
+        series.forEach { serie ->
+            val color = colores.getValue(serie.variable.clave)
+            val punteada = serie.variable.clave == "puntoRocio"
+            serie.puntos.zipWithNext().forEach { (a, b) ->
+                if (b.indice == a.indice + 1) drawLine(color, Offset(x(a.indice), y(a.valor, serie.variable.unidad)),
+                    Offset(x(b.indice), y(b.valor, serie.variable.unidad)), 2.5.dp.toPx(),
+                    pathEffect = if (punteada) androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(5.dp.toPx(), 3.dp.toPx())) else null)
+            }
+            serie.puntos.forEach { punto ->
+                val centro = Offset(x(punto.indice), y(punto.valor, serie.variable.unidad))
+                if (punto.indice == elegido) drawCircle(color.copy(alpha = .2f), 9.dp.toPx(), centro)
+                drawCircle(color, 3.5.dp.toPx(), centro)
+                drawCircle(superficie, 1.3.dp.toPx(), centro)
+            }
+        }
+    }
+    Text(if (series.flatMap { it.puntos }.map { it.indice }.distinct().size == 1) "Un periodo con datos disponibles."
+        else "Toca la gráfica para consultar un periodo.", style = MaterialTheme.typography.bodySmall, color = texto)
 }

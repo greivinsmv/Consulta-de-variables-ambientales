@@ -6,11 +6,12 @@ Proyecto académico del curso IC-3101. La aplicación móvil constituye el compo
 
 ## Funcionalidades
 
-- **Clima actual de Santa Clara:** condiciones meteorológicas con consulta automática cada 15 minutos mientras Inicio está visible y actualización manual.
-- **Historial meteorológico:** datos horarios de los diez días completos anteriores para Santa Clara, San Carlos, con una copia local para consultar sin conexión.
+- **Clima de Costa Rica:** condiciones actuales, pronóstico por hora y de diez días para diez zonas, con actualización automática cada 15 minutos mientras Inicio está visible.
+- **Historial meteorológico:** datos horarios de los diez días completos anteriores para la zona seleccionada, con una copia local independiente por lugar para consultar sin conexión.
 - **Lectura actual:** temperatura, humedad, punto de rocío y fecha del último registro, con actualización en tiempo real.
 - **Promedios por hora:** consulta de un día y selección de cualquiera de sus 24 franjas horarias.
-- **Promedios por día:** análisis de un rango de fechas, con cantidad de lecturas y gráfico de barras.
+- **Promedios por día:** gráfica de un rango de fechas y resumen del día elegido, sin una lista de tarjetas por fecha.
+- **Comparación de variables:** temperatura, humedad y punto de rocío en la misma gráfica, con escalas separadas para °C y %.
 - **Extremos históricos:** mínimos y máximos por variable, fechas de registro y repeticiones.
 - **Filtro de valores atípicos:** límites mínimo y máximo editables por variable, aplicados a los cálculos, gráficos y exportaciones.
 - **Exportación CSV:** resultados con unidades, fechas, zona horaria y límites del filtro cuando está activo.
@@ -23,7 +24,8 @@ Proyecto académico del curso IC-3101. La aplicación móvil constituye el compo
 flowchart LR
     A[ESP32 + DHT22 en Wokwi] -->|Lecturas por HTTP POST| B[Firebase Realtime Database]
     B -->|Eventos en tiempo real| C[Aplicación Android]
-    F[Open-Meteo · Santa Clara] -->|Descarga de diez días| C
+    F[Open-Meteo · Zonas de Costa Rica] -->|Clima actual y pronóstico| C
+    F -->|Historial de diez días| C
     C --> G[Copia local del historial meteorológico]
     C --> D[Consultas y gráficos]
     C --> E[Exportación CSV]
@@ -41,7 +43,7 @@ El punto de rocío se calcula en el ESP32 mediante la aproximación de Magnus, u
 | Datos | Firebase Realtime Database y API REST de Open-Meteo |
 | Dispositivo simulado | ESP32, DHT22, C++ y Wokwi |
 | Compilación | Gradle con Kotlin DSL y catálogo de versiones |
-| Pruebas | JUnit para cálculos, filtros, escalas y formato CSV |
+| Pruebas | JUnit para cálculos, filtros, escalas, respuestas de la API y formato CSV |
 
 ## Estructura
 
@@ -66,15 +68,15 @@ Abre `APP-MOVIL/android` en Android Studio, configura el SDK y Firebase según l
 
 La simulación está disponible en [Wokwi](https://wokwi.com/projects/477474234161260545). Al modificar los valores del DHT22 y ejecutar la simulación, las nuevas lecturas se reflejan en la app conectada al mismo proyecto Firebase.
 
-## Historial meteorológico de Santa Clara
+## Clima y pronósticos
 
-En la app, selecciona **Santa Clara** como fuente. Inicio consulta automáticamente las condiciones actuales y ofrece **Actualizar ahora**. El clima actual presenta la fecha del dato. La última consulta y los detalles de la fuente están en **Información**. Si falla una actualización, se avisa y se conserva el último dato recibido durante la sesión.
+Selecciona **Clima de Costa Rica** como fuente y elige una zona con **Cambiar**. Hay diez lugares disponibles: Santa Clara, San José, Alajuela, Cartago, Heredia, Liberia, Puntarenas, Limón, La Fortuna y San Isidro de Pérez Zeledón. La selección se conserva al cerrar la app.
 
-Para las consultas históricas, pulsa **Cargar historial**. La consulta solicita temperatura, humedad relativa y punto de rocío horarios para las coordenadas aproximadas **10.36, −84.51**. El periodo incluye los diez días completos anteriores al día de descarga, en horario de Costa Rica.
+Inicio muestra la condición actual, temperatura, humedad y punto de rocío, las próximas 24 horas y un pronóstico de diez días. Las filas diarias presentan probabilidad de lluvia y temperaturas mínima y máxima. El fondo y los iconos se dibujan localmente; las condiciones se obtienen de los códigos WMO de la API.
 
-Los valores de Open-Meteo son datos modelados. El apartado **Información (ⓘ)** documenta el origen de los datos y los CSV incluyen su atribución. La app guarda la última descarga válida en el teléfono. Las consultas utilizan la fuente seleccionada; la descarga meteorológica se almacena localmente.
+**Cargar historial** descarga los diez días completos anteriores para la zona seleccionada, en horario de Costa Rica. La copia se guarda en el teléfono y alimenta las consultas por hora, por día y de extremos. El pronóstico futuro se mantiene separado de ese historial.
 
-Datos proporcionados por [Open-Meteo](https://open-meteo.com/), bajo licencia [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). La aplicación calcula promedios, extremos y filtros sobre esos datos.
+Los valores son estimaciones de un modelo meteorológico, no mediciones de una estación local. **Información (ⓘ)** reúne los detalles y créditos; los CSV incluyen la zona y la atribución. Datos de [Open-Meteo](https://open-meteo.com/) bajo [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
 ## Criterios de análisis
 
@@ -84,6 +86,6 @@ Los gráficos y CSV comparten los mismos cálculos que los resultados en pantall
 
 ## Estado y alcance
 
-La aplicación Android, la integración con Firebase y el envío desde Wokwi están implementados y se han probado con lecturas simuladas. El componente web está pendiente de implementación y corresponde a otro integrante del equipo. La app incorpora la descarga de un historial meteorológico de diez días desde Open-Meteo; las respuestas actuales e históricas de la API se han comprobado. La verificación visual se realiza en el dispositivo Android.
+La aplicación Android, la integración con Firebase y el envío desde Wokwi están implementados y se han probado con lecturas simuladas. El componente web está pendiente de implementación y corresponde a otro integrante del equipo. La app incorpora pronósticos y un historial meteorológico de diez días desde Open-Meteo. La compilación, las pruebas unitarias y las respuestas del servicio se verifican por separado de la interfaz. La verificación visual se realiza en el dispositivo Android.
 
 La configuración de conexión pertenece a un entorno de demostración. Para una instalación propia, adapta el proyecto Firebase, sus permisos de acceso y la validación TLS del firmware; los detalles están en la guía móvil.

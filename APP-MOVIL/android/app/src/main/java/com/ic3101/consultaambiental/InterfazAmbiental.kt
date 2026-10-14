@@ -19,7 +19,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -44,49 +43,27 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
     var mostrarInfo by rememberSaveable { mutableStateOf(false) }
     var pantalla by rememberSaveable { mutableStateOf("actual") }
     var fuente by rememberSaveable { mutableStateOf(preferencias.getString("fuente", "esp32") ?: "esp32") }
-    var historial by remember { mutableStateOf<HistorialClima?>(null) }
-    var cargandoClima by remember { mutableStateOf(false) }
-    var mensajeClima by remember { mutableStateOf<String?>(null) }
-    var leyendoCopia by remember { mutableStateOf(true) }
-    val repositorioClima = remember { RepositorioClima(contexto.filesDir) }
+    var zonaElegida by rememberSaveable { mutableStateOf(preferencias.getString("zona_clima", "santa_clara") ?: "santa_clara") }
+    val ubicacion = zonasClimaticas.firstOrNull { it.id == zonaElegida } ?: santaClara
     val alcance = rememberCoroutineScope()
-    LaunchedEffect(repositorioClima) {
-        historial = repositorioClima.leerGuardado()
-        leyendoCopia = false
-    }
-    var climaActual by remember { mutableStateOf<ClimaActual?>(null) }
-    var cargandoActual by remember { mutableStateOf(false) }
-    var mensajeActual by remember { mutableStateOf<String?>(null) }
-    var ultimoIntentoActual by remember { mutableLongStateOf(0L) }
+    val estadoClima = remember { EstadoClima(contexto.filesDir, alcance) }
+    val clima = estadoClima.estado(ubicacion)
+    val historial = clima.historial
+    val climaActual = clima.pronostico?.actual
+    LaunchedEffect(ubicacion.id) { estadoClima.leerGuardado(ubicacion) }
     var visible by remember(ciclo) { mutableStateOf(ciclo.currentState.isAtLeast(Lifecycle.State.STARTED)) }
     DisposableEffect(ciclo) {
         val observador = LifecycleEventObserver { _, _ -> visible = ciclo.currentState.isAtLeast(Lifecycle.State.STARTED) }
         ciclo.addObserver(observador)
         onDispose { ciclo.removeObserver(observador) }
     }
-    fun actualizarActual() {
-        if (cargandoActual) return
-        cargandoActual = true
-        ultimoIntentoActual = System.currentTimeMillis()
-        mensajeActual = null
-        alcance.launch {
-            try {
-                climaActual = descargarClimaActual()
-            } catch (cancelacion: kotlinx.coroutines.CancellationException) {
-                throw cancelacion
-            } catch (error: Exception) {
-                android.util.Log.w("ClimaSantaClara", "No se pudo actualizar el clima actual", error)
-                mensajeActual = "No se pudo actualizar el clima. Comprueba la conexión e intenta nuevamente." +
-                    if (climaActual != null) " Se muestra el último dato recibido." else ""
-            } finally { cargandoActual = false }
-        }
-    }
-    LaunchedEffect(fuente, pantalla, visible, mostrarInfo) {
+    LaunchedEffect(fuente, pantalla, ubicacion.id, visible, mostrarInfo) {
         if (fuente == "clima" && pantalla == "actual" && visible && !mostrarInfo) {
             while (true) {
-                if (ultimoIntentoActual == 0L || System.currentTimeMillis() - ultimoIntentoActual >= intervaloConsultaClima)
-                    actualizarActual()
-                val espera = (intervaloConsultaClima - (System.currentTimeMillis() - ultimoIntentoActual))
+                val ultimoIntento = estadoClima.estado(ubicacion).ultimoIntento
+                if (ultimoIntento == 0L || System.currentTimeMillis() - ultimoIntento >= intervaloConsultaClima)
+                    estadoClima.actualizar(ubicacion)
+                val espera = (intervaloConsultaClima - (System.currentTimeMillis() - estadoClima.estado(ubicacion).ultimoIntento))
                     .coerceIn(1000L, intervaloConsultaClima)
                 delay(espera)
             }
@@ -94,7 +71,7 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
     }
     val seccion = secciones.first { it.clave == pantalla }
     ConsultaAmbientalTheme(darkTheme = oscuro) {
-        if (mostrarInfo) InformacionApp(historial, climaActual) { mostrarInfo = false }
+        if (mostrarInfo) InformacionApp(historial, climaActual, ubicacion) { mostrarInfo = false }
         Scaffold(
             containerColor = MaterialTheme.colorScheme.background,
             bottomBar = {
@@ -108,7 +85,7 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
             }
         ) { padding ->
             val scroll = rememberScrollState()
-            LaunchedEffect(pantalla, fuente) { scroll.scrollTo(0) }
+            LaunchedEffect(pantalla, fuente, ubicacion.id) { scroll.scrollTo(0) }
             Column(Modifier.fillMaxSize().padding(padding).verticalScroll(scroll)) {
                 Column(
                     Modifier.fillMaxWidth().background(
@@ -132,37 +109,33 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
                             }
                         }
                     }
-                    Text(seccion.titulo, color = Color.White, style = MaterialTheme.typography.headlineSmall,
+                    Text(if (fuente == "clima" && pantalla == "actual") "Clima de Costa Rica" else seccion.titulo, color = Color.White, style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.SemiBold)
-                    Text(if (fuente == "clima") "Santa Clara, San Carlos" else "Lecturas del ESP32", color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    if (fuente != "clima" || pantalla != "actual") {
+                        Text(if (fuente == "clima") "${ubicacion.nombre}, ${ubicacion.region}" else "Lecturas del ESP32",
+                            color = Color.White, style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     SelectorFuenteDatos(fuente) {
                         fuente = it
                         preferencias.edit().putString("fuente", it).apply()
                     }
-                    if (fuente == "clima" && pantalla == "actual")
-                        VistaClimaActual(climaActual, cargandoActual, mensajeActual) { actualizarActual() }
-                    if (fuente == "clima" && (pantalla == "actual" || historial == null)) PanelClima(historial, cargandoClima || leyendoCopia, mensajeClima) {
-                        alcance.launch {
-                            cargandoClima = true
-                            mensajeClima = null
-                            try {
-                                historial = repositorioClima.descargar()
-                                mensajeClima = null
-                            } catch (cancelacion: kotlinx.coroutines.CancellationException) {
-                                throw cancelacion
-                            } catch (error: Exception) {
-                                android.util.Log.w("ClimaSantaClara", "No se pudo actualizar el historial meteorológico", error)
-                                mensajeClima = (if (error is java.io.IOException)
-                                    "No se pudo descargar o guardar el clima. Comprueba la conexión e intenta nuevamente."
-                                    else "La respuesta del clima no contiene el historial esperado. Intenta nuevamente más tarde.") +
-                                    if (historial != null) " Se conserva el historial guardado." else ""
-                            } finally { cargandoClima = false }
+                    if (fuente == "clima") {
+                        SelectorZonaClima(ubicacion) { nueva ->
+                            zonaElegida = nueva.id
+                            preferencias.edit().putString("zona_clima", nueva.id).apply()
+                        }
+                        if (pantalla == "actual") VistaPronostico(clima.pronostico, clima.actualizando, clima.errorActual) {
+                            estadoClima.actualizar(ubicacion)
+                        }
+                        if (pantalla == "actual" || historial == null) PanelClima(historial,
+                            clima.descargandoHistorial || clima.leyendoCopia, clima.errorHistorial) {
+                            estadoClima.descargarHistorial(ubicacion)
                         }
                     }
                     val datosClima = if (fuente == "clima") historial else null
-                    if (fuente == "esp32" || datosClima != null) key(fuente, datosClima?.rango) {
+                    if (fuente == "esp32" || datosClima != null) key(fuente, ubicacion.id, datosClima?.rango) {
                         if (pantalla == "actual" && fuente == "esp32") UltimaLectura(Modifier)
                         else if (pantalla != "actual") Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
