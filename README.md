@@ -79,7 +79,7 @@ Inicio muestra la condición actual, temperatura, humedad y punto de rocío, las
 
 Los valores son estimaciones de un modelo meteorológico, no mediciones de una estación local. **Información (ⓘ)** reúne los detalles y créditos; los CSV incluyen la zona y la atribución. Datos de [Open-Meteo](https://open-meteo.com/) bajo [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
 
-## Criterios de análisis
+## Criterios de análisis.
 
 Las fechas de consulta se interpretan en `America/Costa_Rica`. Cada promedio utiliza las lecturas numéricas válidas de la variable seleccionada; los periodos vacíos se muestran como **Sin datos**. El filtro excluye valores de los resultados sin modificar el historial de Firebase.
 
