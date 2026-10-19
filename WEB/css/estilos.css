@@ -1,0 +1,459 @@
+/*
+ * Estructura y componentes de la interfaz.
+ *
+ * En móvil la navegación va fija abajo, como en la app Android. En escritorio pasa a
+ * pestañas dentro de la cabecera y el contenido se reparte en dos columnas: una app
+ * móvil estrecha centrada en un monitor desaprovecha el espacio.
+ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fondo);
+  color: var(--sobre-fondo);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  padding-bottom: calc(var(--alto-nav-movil) + env(safe-area-inset-bottom, 0px));
+}
+
+h1, h2, h3 { margin: 0; font-weight: 600; line-height: 1.25; }
+
+:where(button, a, input, select, summary):focus-visible {
+  outline: 3px solid var(--primario);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.oculto { display: none !important; }
+
+/* Visible solo para lectores de pantalla. */
+.solo-lectores {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* --- Cabecera ------------------------------------------------------------------ */
+
+.cabecera {
+  background: var(--cabecera);
+  color: #fff;
+  border-radius: 0 0 var(--radio-medio) var(--radio-medio);
+  padding: 18px 20px 20px;
+}
+
+.cabecera__interior { max-width: 1140px; margin: 0 auto; }
+
+.cabecera__fila {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 12px;
+}
+
+.cabecera__emblema {
+  display: grid; place-items: center;
+  width: 40px; height: 40px; flex-shrink: 0;
+  background: rgba(255, 255, 255, .16);
+  border-radius: 50%;
+}
+
+.cabecera__acciones { display: flex; align-items: center; gap: 6px; }
+
+.cabecera h1 { font-size: 1.45rem; }
+
+.cabecera__subtitulo { margin: 4px 0 0; font-size: .92rem; opacity: .92; }
+
+.boton-cabecera {
+  display: grid; place-items: center;
+  min-width: 44px; height: 44px; padding: 0 12px;
+  background: rgba(255, 255, 255, .14);
+  color: #fff; border: 0; border-radius: var(--radio-chico);
+  font: inherit; font-size: .85rem; font-weight: 500; cursor: pointer;
+}
+.boton-cabecera:hover { background: rgba(255, 255, 255, .24); }
+
+/* --- Navegación ---------------------------------------------------------------- */
+
+.nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 20;
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  background: var(--superficie);
+  border-top: 1px solid var(--contorno-variante);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.nav__destino {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; padding: 9px 4px;
+  min-height: var(--alto-nav-movil);
+  background: none; border: 0; cursor: pointer;
+  color: var(--sobre-superficie-variante);
+  font: inherit; font-size: .72rem; font-weight: 500;
+}
+
+.nav__destino[aria-current="page"] { color: var(--primario); }
+.nav__destino[aria-current="page"] .nav__icono { background: var(--superficie-variante); }
+
+.nav__icono {
+  display: grid; place-items: center;
+  width: 44px; height: 26px; border-radius: 13px;
+  transition: background .15s ease;
+}
+
+/* --- Estructura ---------------------------------------------------------------- */
+
+.contenido {
+  max-width: 1140px;
+  margin: 0 auto;
+  padding: 18px 16px 32px;
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+.columnas { display: flex; flex-direction: column; gap: 18px; }
+
+.pila { display: flex; flex-direction: column; gap: 14px; }
+
+/* --- Tarjetas ------------------------------------------------------------------ */
+
+.tarjeta {
+  background: var(--superficie);
+  border-radius: var(--radio-medio);
+  box-shadow: var(--sombra-tarjeta);
+  padding: 20px;
+}
+
+.tarjeta--plana { box-shadow: none; border: 1px solid var(--contorno-variante); }
+
+.tarjeta__titulo {
+  font-size: .78rem; text-transform: uppercase; letter-spacing: .08em;
+  color: var(--sobre-superficie-variante); font-weight: 600; margin-bottom: 12px;
+}
+
+/* --- Medición (Inicio) ---------------------------------------------------------- */
+
+.medicion-principal {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center; padding: 26px 20px;
+}
+
+.medicion-principal__aro {
+  display: grid; place-items: center;
+  width: 76px; height: 76px; border-radius: 50%;
+  background: var(--superficie-variante); color: var(--primario);
+}
+
+.medicion-principal__nombre { color: var(--sobre-superficie-variante); font-size: 1.05rem; font-weight: 500; }
+.medicion-principal__valor { font-size: 2.6rem; font-weight: 600; color: var(--primario); line-height: 1.1; }
+
+.rejilla-mediciones {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px;
+}
+
+.medicion { display: flex; flex-direction: column; gap: 9px; }
+.medicion__icono { color: var(--primario); }
+.medicion__nombre { font-size: .85rem; font-weight: 500; color: var(--sobre-superficie-variante); }
+.medicion__valor { font-size: 1.45rem; font-weight: 600; color: var(--primario); }
+
+/* --- Controles ------------------------------------------------------------------ */
+
+.campo { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+
+/* Solo reparten el ancho cuando van en una fila; dentro de una pila vertical
+   `flex: 1` los estiraría a lo alto y dejaría huecos en las tarjetas. */
+.fila-campos > .campo { flex: 1 1 170px; }
+
+.campo__etiqueta { font-size: .82rem; font-weight: 600; color: var(--sobre-superficie-variante); }
+
+.campo input[type="date"], .campo input[type="text"], .campo select {
+  width: 100%; padding: 11px 12px;
+  background: var(--superficie);
+  color: var(--sobre-superficie);
+  border: 1px solid var(--contorno);
+  border-radius: var(--radio-chico);
+  font: inherit; font-size: .95rem;
+  /* Safari iOS encoge los campos de fecha si no se neutraliza su estilo nativo. */
+  -webkit-appearance: none; appearance: none; min-height: 44px;
+}
+
+.campo input:invalid, .campo input[aria-invalid="true"] { border-color: var(--error); }
+
+.fila-campos { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; }
+
+.boton {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 11px 22px;
+  background: var(--primario); color: var(--sobre-primario);
+  border: 0; border-radius: var(--radio-chico);
+  font: inherit; font-size: .95rem; font-weight: 600; cursor: pointer;
+}
+.boton:hover:not(:disabled) { filter: brightness(1.08); }
+.boton:disabled { opacity: .45; cursor: not-allowed; }
+
+.boton--suave {
+  background: var(--superficie-variante); color: var(--primario);
+}
+.boton--contorno {
+  background: transparent; color: var(--primario);
+  border: 1px solid var(--contorno-variante);
+}
+
+.grupo-botones { display: flex; flex-wrap: wrap; gap: 10px; }
+
+/* Selector de variables: mismo lenguaje que los chips de la app Android. */
+.selector-variables { display: flex; gap: 8px; }
+
+.variable {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  min-height: 68px; padding: 8px 6px;
+  background: var(--superficie);
+  color: var(--sobre-superficie-variante);
+  border: 1px solid var(--contorno-variante);
+  border-radius: var(--radio-chico);
+  font: inherit; font-size: .78rem; font-weight: 500; text-align: center; cursor: pointer;
+}
+
+.variable__marca { font-size: .95rem; font-weight: 700; }
+
+.variable[aria-pressed="true"], .variable[aria-checked="true"] {
+  border-width: 2px;
+  border-color: var(--color-serie);
+  color: var(--color-serie);
+  background: color-mix(in srgb, var(--color-serie) 14%, var(--superficie));
+}
+
+/* Selector único (Extremos): relleno sólido, como el RadioButton del móvil. */
+.variable--unica[aria-checked="true"] {
+  background: var(--primario); border-color: var(--primario); color: var(--sobre-primario);
+}
+
+/* Casillas para elegir estadísticas: más compactas que los chips de variables,
+   porque aquí no hay color de serie que mostrar. */
+.grupo-casillas { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.casilla {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 8px 14px;
+  background: var(--superficie);
+  color: var(--sobre-superficie-variante);
+  border: 1px solid var(--contorno-variante);
+  border-radius: var(--radio-chico);
+  font: inherit; font-size: .88rem; font-weight: 500; cursor: pointer;
+}
+
+.casilla__marca {
+  display: grid; place-items: center; flex-shrink: 0;
+  width: 20px; height: 20px; border-radius: 5px;
+  border: 2px solid var(--contorno);
+  font-size: .78rem; font-weight: 700; line-height: 1;
+}
+
+.casilla[aria-checked="true"] {
+  border-color: var(--primario); color: var(--primario);
+  background: var(--superficie-variante);
+}
+.casilla[aria-checked="true"] .casilla__marca {
+  background: var(--primario); border-color: var(--primario); color: var(--sobre-primario);
+}
+
+/* Panel resumen: una fila por variable con sus estadísticas en columnas. */
+.resumen-variable { padding: 12px 0; }
+.resumen-variable + .resumen-variable { border-top: 1px solid var(--contorno-variante); }
+.resumen-variable__nombre { font-size: .88rem; font-weight: 600; margin-bottom: 8px; }
+
+.estadisticas {
+  display: grid; gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
+}
+.estadistica { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.estadistica__etiqueta {
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .06em;
+  font-weight: 600; color: var(--sobre-superficie-variante);
+}
+.estadistica__valor { font-size: 1.15rem; font-weight: 600; }
+.estadistica__detalle { font-size: .74rem; color: var(--sobre-superficie-variante); }
+
+.interruptor {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  /* 44 px es el mínimo cómodo para tocar con el dedo. */
+  width: 100%; min-height: 44px; padding: 0; background: none; border: 0;
+  color: inherit; font: inherit; font-weight: 600; font-size: .88rem; cursor: pointer;
+}
+
+.interruptor__pista {
+  position: relative; flex-shrink: 0;
+  width: 50px; height: 30px; border-radius: 15px;
+  background: var(--superficie-variante);
+  border: 1px solid var(--contorno);
+  transition: background .15s ease;
+}
+.interruptor__pista::after {
+  content: ""; position: absolute; top: 4px; left: 4px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--contorno);
+  transition: transform .15s ease, background .15s ease;
+}
+.interruptor[aria-checked="true"] .interruptor__pista { background: var(--primario); border-color: var(--primario); }
+.interruptor[aria-checked="true"] .interruptor__pista::after { transform: translateX(20px); background: #fff; }
+
+/* --- Avisos --------------------------------------------------------------------- */
+
+.aviso {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 12px 14px; border-radius: var(--radio-chico);
+  background: var(--superficie-variante);
+  color: var(--sobre-superficie-variante);
+  font-size: .88rem;
+}
+
+.aviso--error { background: color-mix(in srgb, var(--error) 14%, var(--superficie)); color: var(--error); }
+.aviso--error strong { color: inherit; }
+
+.nota { font-size: .82rem; color: var(--sobre-superficie-variante); }
+
+/* --- Resultados ----------------------------------------------------------------- */
+
+.resumen-series {
+  background: var(--superficie-variante);
+  border-radius: var(--radio-chico);
+  padding: 4px 16px;
+}
+
+.resumen-serie {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  padding: 11px 0;
+}
+.resumen-serie + .resumen-serie { border-top: 1px solid var(--contorno-variante); }
+
+.resumen-serie__nombre { font-size: .88rem; font-weight: 600; }
+.resumen-serie__detalle { font-size: .78rem; color: var(--sobre-superficie-variante); }
+.resumen-serie__valor { font-size: 1.3rem; font-weight: 600; text-align: right; }
+
+.panel-extremo {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 16px; border-radius: var(--radio-chico);
+  background: var(--superficie-variante);
+}
+.panel-extremo__etiqueta {
+  font-size: .75rem; text-transform: uppercase; letter-spacing: .07em; font-weight: 600;
+  color: var(--sobre-superficie-variante);
+}
+.panel-extremo__valor { font-size: 1.9rem; font-weight: 600; color: var(--primario); }
+.panel-extremo__fecha { font-size: .82rem; color: var(--sobre-superficie-variante); }
+
+.datos-sueltos { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; }
+.dato-suelto__etiqueta { font-size: .76rem; color: var(--sobre-superficie-variante); }
+.dato-suelto__valor { font-size: 1.05rem; font-weight: 600; }
+
+/* --- Gráfica -------------------------------------------------------------------- */
+
+.grafica { position: relative; height: 290px; }
+.grafica canvas { width: 100% !important; }
+
+.leyenda { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 10px; }
+.leyenda__item { display: flex; align-items: center; gap: 7px; font-size: .82rem; font-weight: 500; }
+.leyenda__punto { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+.leyenda__punto--discontinuo {
+  border-radius: 0; height: 3px; width: 18px;
+  background: repeating-linear-gradient(90deg, currentColor 0 5px, transparent 5px 9px);
+}
+
+/* --- Clima ---------------------------------------------------------------------- */
+
+.clima-actual { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.clima-actual__temperatura { font-size: 3rem; font-weight: 600; color: var(--primario); line-height: 1; }
+.clima-actual__condicion { font-size: 1rem; font-weight: 500; }
+
+.tira-horas {
+  display: flex; gap: 8px; overflow-x: auto;
+  padding-bottom: 8px; scroll-snap-type: x proximity;
+}
+.hora-pronostico {
+  flex: 0 0 72px; scroll-snap-align: start;
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 11px 6px; border-radius: var(--radio-chico);
+  background: var(--superficie-variante); font-size: .78rem;
+}
+.hora-pronostico__valor { font-size: .95rem; font-weight: 600; }
+.hora-pronostico__lluvia { color: var(--secundario); font-size: .72rem; }
+
+.dia-pronostico {
+  display: grid; grid-template-columns: 1fr auto auto; gap: 12px;
+  align-items: center; padding: 10px 0; font-size: .88rem;
+}
+.dia-pronostico + .dia-pronostico { border-top: 1px solid var(--contorno-variante); }
+.dia-pronostico__nombre { font-weight: 500; text-transform: capitalize; }
+.dia-pronostico__lluvia { color: var(--secundario); font-size: .78rem; min-width: 42px; text-align: right; }
+.dia-pronostico__rango { display: flex; align-items: center; gap: 9px; font-variant-numeric: tabular-nums; }
+.dia-pronostico__barra {
+  width: 72px; height: 5px; border-radius: 3px;
+  background: var(--contorno-variante); position: relative; overflow: hidden;
+}
+.dia-pronostico__barra span {
+  position: absolute; top: 0; bottom: 0; border-radius: 3px;
+  background: linear-gradient(90deg, var(--secundario), var(--terciario));
+}
+.dia-pronostico__minima { color: var(--sobre-superficie-variante); }
+
+/* --- Información ----------------------------------------------------------------- */
+
+.info__seccion + .info__seccion { margin-top: 18px; }
+.info__seccion h3 { font-size: .95rem; margin-bottom: 6px; }
+.info__seccion p { margin: 0 0 8px; font-size: .88rem; color: var(--sobre-superficie-variante); }
+.info a { color: var(--primario); }
+
+/* --- Escritorio ------------------------------------------------------------------- */
+
+@media (min-width: 768px) {
+  body { padding-bottom: 0; }
+
+  .cabecera { padding-bottom: 0; }
+  .cabecera h1 { font-size: 1.7rem; }
+
+  .nav {
+    position: static; display: flex; gap: 4px;
+    max-width: 1140px; margin: 16px auto 0; padding: 0;
+    background: none; border: 0;
+  }
+  .nav__destino {
+    flex-direction: row; gap: 8px;
+    min-height: 46px; padding: 0 18px;
+    border-radius: var(--radio-chico) var(--radio-chico) 0 0;
+    color: rgba(255, 255, 255, .78); font-size: .9rem;
+  }
+  .nav__destino:hover { color: #fff; background: rgba(255, 255, 255, .1); }
+  .nav__destino[aria-current="page"] { background: var(--fondo); color: var(--primario); }
+  .nav__destino[aria-current="page"] .nav__icono { background: none; }
+  .nav__icono { width: auto; height: auto; }
+
+  /* En una tarjeta a todo lo ancho, unos chips de 500 px cada uno se ven desproporcionados. */
+  .tarjeta > .campo > .selector-variables, .tarjeta > .campo + .campo { max-width: 620px; }
+
+  .contenido { padding: 24px 20px 48px; }
+  .medicion-principal__valor { font-size: 3.2rem; }
+}
+
+/*
+ * Las dos columnas esperan a los 980 px. Repartirlas antes deja la gráfica más angosta
+ * que el panel de controles, que es justo al revés de lo que interesa mirar; en tablet
+ * vertical se lee mejor todo a una columna.
+ */
+@media (min-width: 980px) {
+  .columnas {
+    display: grid; align-items: start;
+    grid-template-columns: minmax(280px, 350px) minmax(420px, 1fr);
+  }
+  .columnas--invertida { grid-template-columns: minmax(420px, 1fr) minmax(280px, 350px); }
+  .grafica { height: 340px; }
+}
+
+@media (max-width: 420px) {
+  .selector-variables { gap: 6px; }
+  .variable { font-size: .72rem; padding: 8px 3px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
