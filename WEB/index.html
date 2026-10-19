@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Consulta Ambiental</title>
+<meta name="description" content="Consulta de variables ambientales del proyecto IoT de IC-3101: temperatura, humedad y punto de rocío.">
+<meta name="color-scheme" content="light dark">
+<link rel="stylesheet" href="css/tema.css?v=4">
+<link rel="stylesheet" href="css/estilos.css?v=4">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='19' font-size='20'>🌡️</text></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+<!-- jsPDF y su complemento de tablas: `defer` conserva el orden, y autotable necesita que jsPDF ya esté cargado. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
+</head>
+<body>
+
+<header class="cabecera">
+  <div class="cabecera__interior">
+    <div class="cabecera__fila">
+      <span class="cabecera__emblema" id="emblema" aria-hidden="true"></span>
+      <div class="cabecera__acciones">
+        <button type="button" class="boton-cabecera" id="boton-tema" aria-pressed="false">
+          <span id="boton-tema-contenido"></span>
+        </button>
+        <button type="button" class="boton-cabecera" id="boton-info"
+                aria-label="Información de la aplicación"></button>
+      </div>
+    </div>
+    <h1 id="titulo">Consulta ambiental</h1>
+    <p class="cabecera__subtitulo" id="subtitulo"></p>
+  </div>
+  <nav class="nav" id="navegacion" aria-label="Secciones"></nav>
+</header>
+
+<main class="contenido" id="contenido" tabindex="-1">
+  <p class="aviso">Cargando…</p>
+</main>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,87 @@
+/*
+ * Paleta del proyecto, tomada de ui/theme/Theme.kt de la app Android para que la web y el
+ * móvil se vean de la misma familia.
+ *
+ * El tema se controla con el atributo data-tema en <html>: "claro" u "oscuro". Si no está
+ * puesto, se sigue la preferencia del sistema. app.js guarda la elección en localStorage.
+ */
+
+:root {
+  --primario: #7055C5;
+  --sobre-primario: #FFFFFF;
+  --secundario: #5465B0;
+  --terciario: #AD347B;
+  --fondo: #F6F5FC;
+  --sobre-fondo: #302547;
+  --superficie: #FFFFFF;
+  --sobre-superficie: #302547;
+  --superficie-variante: #EEE9FA;
+  --sobre-superficie-variante: #665C7D;
+  --contorno: #837794;
+  --contorno-variante: #E3DDF0;
+  --error: #BA1A1A;
+
+  /* Colores de serie: los mismos en la leyenda, la gráfica y el detalle. */
+  --serie-temperatura: #7050C6;
+  --serie-humedad: #007E78;
+  --serie-rocio: #BB397C;
+
+  --sombra-tarjeta: 0 1px 3px rgba(48, 37, 71, .12), 0 1px 2px rgba(48, 37, 71, .06);
+  --sombra-elevada: 0 4px 16px rgba(48, 37, 71, .13);
+
+  /* Radios de Theme.kt: small 14, medium 22, large 28. */
+  --radio-chico: 14px;
+  --radio-medio: 22px;
+  --radio-grande: 28px;
+
+  --cabecera: linear-gradient(120deg, #5262C7 0%, #9250CE 100%);
+  --alto-nav-movil: 64px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]) {
+    --primario: #C7ADFF;
+    --sobre-primario: #32205D;
+    --secundario: #BCC5FF;
+    --terciario: #FFABDC;
+    --fondo: #151221;
+    --sobre-fondo: #ECE6F7;
+    --superficie: #211C30;
+    --sobre-superficie: #ECE6F7;
+    --superficie-variante: #322A45;
+    --sobre-superficie-variante: #CCC0DD;
+    --contorno: #9D8EAF;
+    --contorno-variante: #473D58;
+    --error: #FFB4AB;
+
+    --serie-temperatura: #C0A8FF;
+    --serie-humedad: #6ADBD3;
+    --serie-rocio: #FFA4D0;
+
+    --sombra-tarjeta: 0 1px 3px rgba(0, 0, 0, .4);
+    --sombra-elevada: 0 4px 16px rgba(0, 0, 0, .5);
+  }
+}
+
+:root[data-tema="oscuro"] {
+  --primario: #C7ADFF;
+  --sobre-primario: #32205D;
+  --secundario: #BCC5FF;
+  --terciario: #FFABDC;
+  --fondo: #151221;
+  --sobre-fondo: #ECE6F7;
+  --superficie: #211C30;
+  --sobre-superficie: #ECE6F7;
+  --superficie-variante: #322A45;
+  --sobre-superficie-variante: #CCC0DD;
+  --contorno: #9D8EAF;
+  --contorno-variante: #473D58;
+  --error: #FFB4AB;
+
+  --serie-temperatura: #C0A8FF;
+  --serie-humedad: #6ADBD3;
+  --serie-rocio: #FFA4D0;
+
+  --sombra-tarjeta: 0 1px 3px rgba(0, 0, 0, .4);
+  --sombra-elevada: 0 4px 16px rgba(0, 0, 0, .5);
+}
