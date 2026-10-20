@@ -17,10 +17,22 @@ Una tarea se marca terminada después de ejecutar su prueba de regresión.
 
 ## Validación antes de integrar
 
-- [ ] Ejecutar las 58 pruebas existentes de `pruebas.html`.
-- [ ] Ejecutar las pruebas de regresión de interfaz.
-- [ ] Comprobar las exportaciones CSV y PDF.
-- [ ] Revisar el diff y publicar los commits en la rama de trabajo.
+- [x] Ejecutar las 58 pruebas existentes de `pruebas.html`.
+- [x] Ejecutar las pruebas de regresión de interfaz.
+- [x] Comprobar las exportaciones CSV y PDF.
+- [x] Revisar el diff y publicar los commits en la rama de trabajo.
 
 La integración se dirige a `feat/pagina-web`, para que las correcciones formen parte del PR #3.
 No se modifica `main` ni se publica una revisión de GitHub.
+
+## Evidencia
+
+- `python -m unittest discover -s WEB/tests -v`: 17 casos correctos, uno de los cuales
+  ejecuta las 58 comprobaciones del núcleo; los otros 16 cubren las regresiones de interfaz.
+- Comprobación adicional en Chromium con Chart.js y jsPDF reales: gráfica de tres variables
+  con sus dos unidades, CSV con las 24 franjas del día y PDF con el resumen limitado al día.
+- Caso del caché con dos días a 10 °C y 30 °C: al consultar el segundo día, el resumen y el
+  PDF muestran 30 °C y 24 lecturas; no incluyen valores ni fechas del primero.
+- Vista de 390 píxeles sin desbordamiento horizontal ni errores de JavaScript.
+
+Las pruebas usan lecturas de ejemplo y respuestas HTTP controladas. No escriben en Firebase.
