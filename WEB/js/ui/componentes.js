@@ -223,8 +223,11 @@ export function conectarControlFiltro(raiz, { filtro, claveEditada, alCambiar, a
   });
 
   raiz.querySelectorAll("[data-limite]").forEach((campo) => {
-    campo.addEventListener("input", () => {
+    const actualizar = (evento) => {
+      if (evento.isComposing) return;
       const extremo = campo.dataset.limite;
+      const teniaFoco = document.activeElement === campo;
+      const { selectionStart, selectionEnd, selectionDirection } = campo;
       alCambiar({
         ...filtro,
         limites: {
@@ -232,7 +235,16 @@ export function conectarControlFiltro(raiz, { filtro, claveEditada, alCambiar, a
           [claveEditada]: { ...filtro.limites[claveEditada], [extremo]: campo.value }
         }
       });
-    });
+      // alCambiar repinta los resultados y reemplaza los campos. Se retoma la edición
+      // en el nuevo nodo para poder escribir varios caracteres o corregir uno en medio.
+      if (teniaFoco) {
+        const nuevo = raiz.querySelector(`[data-limite="${extremo}"]`);
+        nuevo?.focus({ preventScroll: true });
+        nuevo?.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
+      }
+    };
+    campo.addEventListener("input", actualizar);
+    campo.addEventListener("compositionend", actualizar);
   });
 }
 

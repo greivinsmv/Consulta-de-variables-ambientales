@@ -124,6 +124,33 @@ class InterfazTest(unittest.TestCase):
         expect(self.page.locator("#resumen")).to_contain_text("58")
         self.assertEqual(self.page.locator(".fallo").count(), 0)
 
+    def comprobar_edicion_del_filtro(self):
+        self.page.locator("[data-filtro-activo]").click()
+        maximo = self.page.locator('[data-limite="maximo"]')
+        maximo.fill("")
+        self.page.keyboard.type("100", delay=20)
+        expect(maximo).to_have_value("100")
+        expect(maximo).to_be_focused()
+        maximo.evaluate("campo => campo.setSelectionRange(1, 2)")
+        self.page.keyboard.type("2")
+        expect(maximo).to_have_value("120")
+        self.assertEqual(maximo.evaluate("campo => campo.selectionStart"), 2)
+        minimo = self.page.locator('[data-limite="minimo"]')
+        minimo.fill("")
+        self.page.keyboard.type("-12,5", delay=20)
+        expect(minimo).to_have_value("-12,5")
+        expect(minimo).to_be_focused()
+        expect(self.page.locator("[data-consultar]")).to_be_enabled()
+
+    def test_editar_filtro_conserva_foco_y_cursor(self):
+        self.consultar_horas()
+        self.comprobar_edicion_del_filtro()
+
+    def test_editar_filtro_de_extremos_conserva_foco(self):
+        self.abrir()
+        self.page.locator('[data-ir="historico"]').click()
+        self.comprobar_edicion_del_filtro()
+
     def test_filtro_invalido_oculta_resultados_y_exportaciones(self):
         self.consultar_horas()
         self.page.locator("[data-filtro-activo]").click()
