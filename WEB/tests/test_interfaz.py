@@ -124,6 +124,47 @@ class InterfazTest(unittest.TestCase):
         expect(self.page.locator("#resumen")).to_contain_text("58")
         self.assertEqual(self.page.locator(".fallo").count(), 0)
 
+    def test_resumen_y_exportaciones_respetan_el_dia_consultado(self):
+        self.consultar_horas("clima")
+        resumen = self.page.locator(".estadisticas")
+        expect(resumen.locator(".estadistica__valor")).to_have_text(["30,0 °C"] * 3)
+        expect(resumen).to_contain_text("24 lecturas")
+        self.assertNotIn("17/10/2026", resumen.inner_text())
+
+        with self.page.expect_download() as descarga:
+            self.page.locator('[data-exportar="csv"]').click()
+        csv = Path(descarga.value.path()).read_text(encoding="utf-8-sig")
+        self.assertEqual(len(csv.splitlines()), 25)
+        self.assertNotIn(ANTES, csv)
+        self.assertIn('"30,000"', csv)
+
+        # Captura las tablas entregadas a jsPDF: así se comprueba el contenido del
+        # informe sin depender de fuentes PDF ni de un extractor instalado en el equipo.
+        self.page.evaluate("""() => {
+          window.tablasPdf = [];
+          window.jspdf = { jsPDF: class {
+            internal = {pageSize: {getWidth: () => 210, getHeight: () => 297}, getNumberOfPages: () => 1};
+            setFont() {} setFontSize() {} setTextColor() {} text() {} addImage() {} setPage() {}
+            splitTextToSize(texto) { return [texto]; }
+            autoTable(tabla) { window.tablasPdf.push(tabla); this.lastAutoTable = {finalY: 80}; }
+            save() { window.pdfGuardado = true; }
+          }};
+        }""")
+        self.page.locator('[data-exportar="pdf"]').click()
+        self.page.wait_for_function("window.pdfGuardado === true")
+        fila = self.page.evaluate("window.tablasPdf[0].body[0]")
+        self.assertEqual(fila[2], "30,000")
+        self.assertEqual(fila[-1], "24")
+        self.assertNotIn(ANTES, " ".join(fila))
+
+    def test_resumen_diario_no_incluye_otros_dias_del_cache(self):
+        self.abrir("clima")
+        self.page.locator('[data-ir="dia"]').click()
+        self.page.locator('[data-fecha="inicio"]').fill(AYER)
+        self.page.locator("[data-consultar]").click()
+        expect(self.page.locator(".estadisticas")).to_contain_text("24 lecturas")
+        expect(self.page.locator(".estadistica__valor")).to_have_text(["30,0 °C"] * 3)
+
     def test_extremos_descarta_respuesta_de_otra_fuente(self):
         self.abrir()
         self.page.locator('[data-ir="historico"]').click()
