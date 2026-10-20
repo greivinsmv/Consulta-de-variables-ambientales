@@ -11,7 +11,7 @@
 
 import {
   variablePorClave, hoyCR, sumarDias, franjaHoraria, fechasDelRango, diasEntre,
-  formatearFecha, formatearFechaCorta
+  formatearFecha, formatearFechaCorta, inicioDiaCR, finDiaExclusivoCR
 } from "../modelo.js";
 import {
   promediosPorHora, promediosDiarios, errorRango, resumenEstadistico
@@ -64,7 +64,7 @@ const estadoInicial = (modo) => ({
   error: "",
   fechasPropuestas: false,
   estadisticas: ["promedio", "maximo", "minimo"],
-  seleccion: 0
+  seleccion: null
 });
 
 const estados = { hora: estadoInicial("hora"), dia: estadoInicial("dia") };
@@ -267,6 +267,9 @@ function resultados(modo, estado, datos, oscuro) {
   if (!estado.consulta) {
     return `<section class="tarjeta">${aviso("Elige las fechas y las variables, y pulsa Consultar.")}</section>`;
   }
+  if (!comparacionValida(estado.elegidas, estado.filtro)) {
+    return `<section class="tarjeta">${aviso("Completa los límites del filtro para ver o exportar los resultados.")}</section>`;
+  }
 
   const config = MODOS[modo];
   const filtrados = datosComparacion(estado.registros, estado.elegidas, estado.filtro);
@@ -292,9 +295,10 @@ function resultados(modo, estado, datos, oscuro) {
       </section>`;
   }
 
-  // Si el periodo elegido se quedó sin datos, se mueve al primero que sí tenga.
+  // Solo se propone un periodo al abrir una consulta. Una elección explícita sin
+  // lecturas debe conservarse para poder ver sus huecos en el detalle.
   const disponibles = series.flatMap((s) => s.puntos.map((p) => p.indice));
-  const seleccion = disponibles.includes(estado.seleccion)
+  const seleccion = indices.includes(estado.seleccion)
     ? estado.seleccion
     : Math.min(...disponibles);
   estado.seleccion = seleccion;
@@ -359,36 +363,48 @@ export function render(modo, datos, oscuro) {
 
 async function consultar(modo, datos, volverAPintar) {
   const estado = estados[modo];
-  if (errorDeFechas(modo, estado, datos)) return;
+  if (estado.cargando || errorDeFechas(modo, estado, datos) ||
+      !comparacionValida(estado.elegidas, estado.filtro)) return;
+  const consulta = modo === "hora"
+    ? { dia: estado.dia }
+    : { inicio: estado.inicio, fin: estado.fin };
 
   estado.cargando = true;
   estado.error = "";
   volverAPintar();
 
   try {
+    let registros;
     if (datos.tipo === "clima") {
       // Si el periodo elegido no está en el historial que hay en memoria, se descarga.
       const rango = modo === "hora"
-        ? { inicio: estado.dia, fin: estado.dia }
-        : { inicio: estado.inicio, fin: estado.fin };
+        ? { inicio: consulta.dia, fin: consulta.dia }
+        : consulta;
       const historial = await datos.asegurar(rango);
-      estado.registros = historial?.registros ?? [];
+      registros = historial?.registros ?? [];
     } else if (modo === "hora") {
-      estado.registros = (await leerDia(estado.dia)).registros;
+      registros = (await leerDia(consulta.dia)).registros;
     } else {
-      estado.registros = (await leerRangoFechas(estado.inicio, estado.fin)).registros;
+      registros = (await leerRangoFechas(consulta.inicio, consulta.fin)).registros;
     }
-    estado.consulta = modo === "hora"
-      ? { dia: estado.dia }
-      : { inicio: estado.inicio, fin: estado.fin };
-    estado.seleccion = modo === "hora" ? 0 : 0;
+    if (estado !== estados[modo]) return;
+    // El caché puede cubrir más días que la consulta. El resumen, el filtro y el PDF
+    // deben trabajar con el mismo periodo que las series y el CSV.
+    const desde = inicioDiaCR(consulta.dia ?? consulta.inicio);
+    const hasta = finDiaExclusivoCR(consulta.dia ?? consulta.fin);
+    estado.registros = registros.filter((registro) => registro.ts >= desde && registro.ts < hasta);
+    estado.consulta = consulta;
+    estado.seleccion = null;
   } catch (error) {
+    if (estado !== estados[modo]) return;
     estado.error = error.message;
     estado.consulta = null;
     estado.registros = [];
   } finally {
-    estado.cargando = false;
-    volverAPintar();
+    if (estado === estados[modo]) {
+      estado.cargando = false;
+      volverAPintar();
+    }
   }
 }
 
@@ -398,6 +414,9 @@ async function consultar(modo, datos, volverAPintar) {
  * archivo seguiría correspondiendo a lo que el usuario vio.
  */
 function exportar(formato, modo, estado, datos, lienzo) {
+  if (!estado.consulta || !comparacionValida(estado.elegidas, estado.filtro)) {
+    throw new Error("Completa los límites del filtro antes de exportar.");
+  }
   const config = MODOS[modo];
   const filtrados = datosComparacion(estado.registros, estado.elegidas, estado.filtro);
   const resultados = resultadosPorVariable(modo, estado, filtrados);
@@ -507,12 +526,10 @@ export function conectar(raiz, modo, datos, oscuro, volverAPintar) {
 
   raiz.querySelectorAll("[data-fecha]").forEach((campo) => {
     campo.addEventListener("change", () => {
-      estado[campo.dataset.fecha] = campo.value;
       // Cambiar las fechas descarta la consulta anterior: sus resultados ya no
-      // corresponden a lo que muestran los controles.
-      estado.consulta = null;
-      estado.registros = [];
-      estado.error = "";
+      // corresponden a lo que muestran los controles, aunque aún esté descargando.
+      estados[modo] = { ...estado, [campo.dataset.fecha]: campo.value,
+        consulta: null, registros: [], error: "", cargando: false };
       destruirGrafica();
       volverAPintar();
     });

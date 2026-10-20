@@ -155,6 +155,8 @@ export function observarUltimaLectura(alRecibir, alFallar, intervaloMs = 30000) 
   let temporizador = null;
   let controlador = null;
   let ultimoId = null;
+  let recibidaPrimeraRespuesta = false;
+  let recuperando = false;
 
   const consultar = async () => {
     if (cancelado || document.visibilityState !== "visible") return;
@@ -163,12 +165,20 @@ export function observarUltimaLectura(alRecibir, alFallar, intervaloMs = 30000) 
     try {
       const lectura = await leerUltimaLectura({ señal: controlador.signal });
       if (cancelado) return;
-      if (lectura?.id !== ultimoId) {
-        ultimoId = lectura?.id ?? null;
+      const id = lectura?.id ?? null;
+      // Una respuesta vacía termina la carga inicial. Después de un fallo también
+      // se avisa, aunque el ESP32 aún no haya enviado una lectura distinta.
+      if (!recibidaPrimeraRespuesta || recuperando || id !== ultimoId) {
+        ultimoId = id;
+        recibidaPrimeraRespuesta = true;
+        recuperando = false;
         alRecibir(lectura);
       }
     } catch (error) {
-      if (!cancelado && error.name !== "AbortError") alFallar?.(error);
+      if (!cancelado && error.name !== "AbortError") {
+        recuperando = true;
+        alFallar?.(error);
+      }
     }
   };
 

@@ -9,7 +9,7 @@
  * en los promedios de las consultas académicas.
  */
 
-import { formatearValor, formatearFechaHora, hoyCR, esNumeroValido } from "../modelo.js";
+import { formatearValor, formatearFechaHora, hoyCR, fechaCR, esNumeroValido } from "../modelo.js";
 import { observarUltimaLectura } from "../firebase.js";
 import { condicionWmo, datoActualAnterior } from "../openmeteo.js";
 import { icono, iconoClima } from "./iconos.js";
@@ -37,6 +37,14 @@ export function sincronizarEscucha(estado, alActualizar) {
       lecturaEsp32.lectura = lectura;
       lecturaEsp32.error = "";
       lecturaEsp32.cargando = false;
+      if (lectura) {
+        const fecha = fechaCR(lectura.ts);
+        const { inicio = fecha, fin = fecha } = estado.esp32.periodo ?? {};
+        estado.esp32.periodo = {
+          inicio: fecha < inicio ? fecha : inicio,
+          fin: fecha > fin ? fecha : fin
+        };
+      }
       alActualizar();
     },
     (error) => {
