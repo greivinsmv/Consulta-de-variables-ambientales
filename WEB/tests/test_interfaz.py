@@ -124,6 +124,24 @@ class InterfazTest(unittest.TestCase):
         expect(self.page.locator("#resumen")).to_contain_text("58")
         self.assertEqual(self.page.locator(".fallo").count(), 0)
 
+    def test_inicio_se_recupera_aunque_no_haya_una_lectura_nueva(self):
+        self.abrir()
+        def fallo(ruta):
+            ruta.fulfill(status=503, json={"error": "sin servicio"})
+        self.responder_firebase = fallo
+        self.page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        expect(self.page.locator(".aviso--error")).to_contain_text("Firebase")
+        self.responder_firebase = self.firebase_normal
+        self.page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        expect(self.page.locator(".medicion-principal__valor")).to_have_text("30,0 °C")
+        expect(self.page.locator(".aviso--error")).to_have_count(0)
+
+    def test_base_vacia_termina_la_carga_inicial(self):
+        self.responder_firebase = lambda ruta: ruta.fulfill(body="null", content_type="application/json")
+        self.abrir()
+        expect(self.page.locator("#contenido")).to_contain_text("Todavía no hay lecturas")
+        self.assertNotIn("Cargando lecturas", self.page.locator("#contenido").inner_text())
+
     def test_lectura_nueva_amplia_las_fechas_disponibles(self):
         self.abrir()
         self.responder_firebase = lambda ruta: ruta.fulfill(json={"nueva": lectura(42, HOY)})
@@ -320,7 +338,7 @@ class InterfazTest(unittest.TestCase):
         consultas = []
         def vacio(ruta):
             consultas.append(ruta.request.url)
-            ruta.fulfill(json=None)
+            ruta.fulfill(body="null", content_type="application/json")
         self.responder_firebase = vacio
         self.abrir()
         for _ in range(3):

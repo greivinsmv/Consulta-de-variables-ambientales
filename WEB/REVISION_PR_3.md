@@ -13,7 +13,7 @@ Una tarea se marca terminada después de ejecutar su prueba de regresión.
 - [x] Conservar el foco y el cursor al escribir los límites del filtro.
 - [x] Respetar la selección de horas y días sin lecturas.
 - [x] Actualizar las fechas disponibles cuando llegan nuevas lecturas del ESP32.
-- [ ] Recuperar Inicio después de un error aunque la última lectura no haya cambiado.
+- [x] Recuperar Inicio después de un error aunque la última lectura no haya cambiado.
 
 ## Validación antes de integrar
 
