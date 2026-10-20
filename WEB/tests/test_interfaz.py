@@ -124,6 +124,33 @@ class InterfazTest(unittest.TestCase):
         expect(self.page.locator("#resumen")).to_contain_text("58")
         self.assertEqual(self.page.locator(".fallo").count(), 0)
 
+    def test_seleccionar_hora_sin_lecturas_no_salta_a_otra(self):
+        self.consultar_horas()
+        expect(self.page.locator("[data-periodo]")).to_have_value("8")
+        self.page.locator("[data-periodo]").select_option("9")
+        expect(self.page.locator("[data-periodo]")).to_have_value("9")
+        expect(self.page.locator(".resumen-series").first).to_contain_text("Sin datos")
+        self.page.locator("#boton-tema").click()
+        expect(self.page.locator("[data-periodo]")).to_have_value("9")
+
+    def test_seleccionar_dia_sin_lecturas_no_salta_a_otro(self):
+        def con_hueco(ruta):
+            parametros = parse_qs(urlparse(ruta.request.url).query)
+            datos = {"primera": lectura(10, ANTES), "ultima": lectura(30, HOY)}
+            if "limitToFirst" in parametros:
+                datos = {"primera": datos["primera"]}
+            elif "limitToLast" in parametros:
+                datos = {"ultima": datos["ultima"]}
+            ruta.fulfill(json=datos)
+        self.responder_firebase = con_hueco
+        self.abrir()
+        self.page.locator('[data-ir="dia"]').click()
+        self.page.locator("[data-consultar]").click()
+        expect(self.page.locator("[data-periodo]")).to_be_visible()
+        self.page.locator("[data-periodo]").select_option("1")
+        expect(self.page.locator("[data-periodo]")).to_have_value("1")
+        expect(self.page.locator(".resumen-series").first).to_contain_text("Sin datos")
+
     def comprobar_edicion_del_filtro(self):
         self.page.locator("[data-filtro-activo]").click()
         maximo = self.page.locator('[data-limite="maximo"]')
