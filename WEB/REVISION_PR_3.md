@@ -22,8 +22,9 @@ Una tarea se marca terminada después de ejecutar su prueba de regresión.
 - [x] Comprobar las exportaciones CSV y PDF.
 - [x] Revisar el diff y publicar los commits en la rama de trabajo.
 
-La integración se dirige a `feat/pagina-web`, para que las correcciones formen parte del PR #3.
-No se modifica `main` ni se publica una revisión de GitHub.
+El [PR #5](https://github.com/greivinsmv/Consulta-de-variables-ambientales/pull/5)
+incorporó las correcciones en `feat/pagina-web`. El PR #3 integra el cliente web y estas
+correcciones en `main`. La revisión se documentó en la issue #4, sin publicar una revisión de GitHub.
 
 ## Evidencia
 

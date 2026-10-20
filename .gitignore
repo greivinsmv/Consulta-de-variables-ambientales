@@ -15,3 +15,11 @@
 .env
 .env.*
 !.env.example
+
+# Firmware y credenciales del dispositivo se mantienen fuera del repositorio
+APP-MOVIL/wokwi/
+**/secrets.h
+**/credenciales.local.*
+**/*service-account*.json
+**/*.pcap
+**/*.pcapng

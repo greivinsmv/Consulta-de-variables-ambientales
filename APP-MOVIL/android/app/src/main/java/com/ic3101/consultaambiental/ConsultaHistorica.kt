@@ -92,7 +92,7 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
         }
         val variableCsv = variables.first { it.clave == variableElegida }
         val resumenCsv = extremosHistoricos(datosConsulta, variableElegida)
-        BotonExportarCsv("extremos_${variableElegida}${if (historial != null) "_santa_clara" else ""}.csv",
+        BotonExportarCsv("extremos_${variableElegida}${historial?.let { "_${it.ubicacion.id}" }.orEmpty()}.csv",
             if (recibido && !cargando && resumenCsv != null) csvExtremos(variableCsv, resumenCsv, limitesFiltro, historial?.origen) else null)
         if (datos.isNotEmpty() && filtroValido) ResumenFiltro(filtrados, filtro.activo)
         if (cargando) CircularProgressIndicator()
