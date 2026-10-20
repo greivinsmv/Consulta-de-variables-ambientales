@@ -11,7 +11,7 @@ Una tarea se marca terminada después de ejecutar su prueba de regresión.
 - [x] Calcular el resumen y el PDF solo con los registros del periodo consultado.
 - [x] Bloquear resultados y exportaciones si el filtro activo es inválido.
 - [x] Conservar el foco y el cursor al escribir los límites del filtro.
-- [ ] Respetar la selección de horas y días sin lecturas.
+- [x] Respetar la selección de horas y días sin lecturas.
 - [ ] Actualizar las fechas disponibles cuando llegan nuevas lecturas del ESP32.
 - [ ] Recuperar Inicio después de un error aunque la última lectura no haya cambiado.
 

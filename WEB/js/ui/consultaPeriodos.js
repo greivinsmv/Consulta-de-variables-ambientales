@@ -64,7 +64,7 @@ const estadoInicial = (modo) => ({
   error: "",
   fechasPropuestas: false,
   estadisticas: ["promedio", "maximo", "minimo"],
-  seleccion: 0
+  seleccion: null
 });
 
 const estados = { hora: estadoInicial("hora"), dia: estadoInicial("dia") };
@@ -295,9 +295,10 @@ function resultados(modo, estado, datos, oscuro) {
       </section>`;
   }
 
-  // Si el periodo elegido se quedó sin datos, se mueve al primero que sí tenga.
+  // Solo se propone un periodo al abrir una consulta. Una elección explícita sin
+  // lecturas debe conservarse para poder ver sus huecos en el detalle.
   const disponibles = series.flatMap((s) => s.puntos.map((p) => p.indice));
-  const seleccion = disponibles.includes(estado.seleccion)
+  const seleccion = indices.includes(estado.seleccion)
     ? estado.seleccion
     : Math.min(...disponibles);
   estado.seleccion = seleccion;
@@ -393,7 +394,7 @@ async function consultar(modo, datos, volverAPintar) {
     const hasta = finDiaExclusivoCR(consulta.dia ?? consulta.fin);
     estado.registros = registros.filter((registro) => registro.ts >= desde && registro.ts < hasta);
     estado.consulta = consulta;
-    estado.seleccion = modo === "hora" ? 0 : 0;
+    estado.seleccion = null;
   } catch (error) {
     if (estado !== estados[modo]) return;
     estado.error = error.message;
