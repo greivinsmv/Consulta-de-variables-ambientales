@@ -86,17 +86,23 @@ export const fuenteDatos = () => estado.fuente === "clima"
  * Averigua entre qué fechas hay lecturas del ESP32.
  * Si falla, los selectores se quedan sin acotar: es una ayuda, no un requisito.
  */
-async function cargarPeriodoEsp32() {
-  if (estado.esp32.periodo || estado.esp32.cargandoPeriodo) return;
+async function cargarPeriodoEsp32({ refrescar = false } = {}) {
+  if (estado.esp32.cargandoPeriodo || (estado.esp32.periodo && !refrescar)) return;
   // Un rango vacío también es una respuesta válida. No se vuelve a pedir en cada render.
   const ultimoIntento = estado.esp32.ultimoIntentoPeriodo;
   if (ultimoIntento !== null && Date.now() - ultimoIntento < 30000) return;
   estado.esp32.ultimoIntentoPeriodo = Date.now();
   estado.esp32.cargandoPeriodo = true;
   try {
-    estado.esp32.periodo = await rangoDisponible();
+    const periodo = await rangoDisponible();
+    const conocido = estado.esp32.periodo;
+    // Inicio puede recibir una lectura nueva mientras se consultan estos límites.
+    estado.esp32.periodo = periodo && conocido ? {
+      inicio: periodo.inicio < conocido.inicio ? periodo.inicio : conocido.inicio,
+      fin: periodo.fin > conocido.fin ? periodo.fin : conocido.fin
+    } : periodo ?? conocido;
   } catch {
-    estado.esp32.periodo = null;
+    // Se conservan las fechas que ya se conocen por lecturas o consultas anteriores.
   } finally {
     estado.esp32.cargandoPeriodo = false;
     render();
@@ -217,6 +223,9 @@ function programarPronostico() {
 export function irA(pantalla) {
   if (estado.pantalla === pantalla) return;
   estado.pantalla = pantalla;
+  if (estado.fuente === "esp32" && (pantalla === "hora" || pantalla === "dia")) {
+    cargarPeriodoEsp32({ refrescar: true });
+  }
   destruirGrafica();
   render();
   document.getElementById("contenido").focus({ preventScroll: true });

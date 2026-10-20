@@ -124,6 +124,39 @@ class InterfazTest(unittest.TestCase):
         expect(self.page.locator("#resumen")).to_contain_text("58")
         self.assertEqual(self.page.locator(".fallo").count(), 0)
 
+    def test_lectura_nueva_amplia_las_fechas_disponibles(self):
+        self.abrir()
+        self.responder_firebase = lambda ruta: ruta.fulfill(json={"nueva": lectura(42, HOY)})
+        self.page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        expect(self.page.locator(".medicion-principal__valor")).to_have_text("42,0 °C")
+        self.page.locator('[data-ir="hora"]').click()
+        expect(self.page.locator('[data-fecha="dia"]')).to_have_attribute("max", HOY)
+        self.page.locator('[data-fecha="dia"]').fill(HOY)
+        expect(self.page.locator("[data-consultar]")).to_be_enabled()
+        self.page.locator("[data-consultar]").click()
+        expect(self.page.locator(".estadisticas")).to_contain_text("42,0 °C")
+
+    def test_limites_tardios_no_ocultan_una_lectura_nueva(self):
+        pendientes = []
+        def limites_lentos(ruta):
+            parametros = parse_qs(urlparse(ruta.request.url).query)
+            if parametros.get("orderBy") == ['"ts"']:
+                pendientes.append(ruta)
+            else:
+                self.firebase_normal(ruta)
+        self.responder_firebase = limites_lentos
+        self.page.goto(self.base, wait_until="domcontentloaded")
+        expect(self.page.locator(".medicion-principal__valor")).to_have_text("30,0 °C")
+        self.assertEqual(len(pendientes), 2)
+        self.responder_firebase = lambda ruta: ruta.fulfill(json={"nueva": lectura(42, HOY)})
+        self.page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        expect(self.page.locator(".medicion-principal__valor")).to_have_text("42,0 °C")
+        for pendiente in pendientes:
+            pendiente.fulfill(json=LECTURAS)
+        self.page.wait_for_function("async () => !(await import('./js/app.js')).estado.esp32.cargandoPeriodo")
+        self.page.locator('[data-ir="hora"]').click()
+        expect(self.page.locator('[data-fecha="dia"]')).to_have_attribute("max", HOY)
+
     def test_seleccionar_hora_sin_lecturas_no_salta_a_otra(self):
         self.consultar_horas()
         expect(self.page.locator("[data-periodo]")).to_have_value("8")
