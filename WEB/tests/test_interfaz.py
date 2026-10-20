@@ -1,0 +1,159 @@
+"""Regresiones de la web. Las respuestas HTTP son locales; nunca se escribe en Firebase."""
+
+import functools
+import http.server
+import json
+import os
+from pathlib import Path
+import shutil
+import threading
+import unittest
+from datetime import datetime, timedelta, timezone
+from urllib.parse import parse_qs, urlparse
+
+from playwright.sync_api import sync_playwright, expect
+
+
+WEB = Path(__file__).resolve().parents[1]
+FIREBASE = "https://proyecto-iot-fa353-default-rtdb.firebaseio.com/**"
+CLIMA = "https://api.open-meteo.com/**"
+HOY, AYER, ANTES = "2026-10-19", "2026-10-18", "2026-10-17"
+CR = timezone(timedelta(hours=-6))
+
+
+def ts(dia, hora=0):
+    return int(datetime.fromisoformat(dia).replace(hour=hora, tzinfo=CR).timestamp() * 1000)
+
+
+def lectura(valor, dia=AYER, hora=8):
+    return {"temperatura": valor, "humedad": 60, "puntoRocio": 15, "ts": ts(dia, hora)}
+
+
+LECTURAS = {"a": lectura(20), "b": lectura(30, hora=10)}
+HISTORIAL = {
+    "version": 1, "zonaId": "santa_clara", "rango": {"inicio": ANTES, "fin": AYER},
+    "descargadoEn": ts(HOY),
+    "registros": [
+        {"ts": ts(dia, hora), "valores": {"temperatura": valor, "humedad": 60, "puntoRocio": 15}}
+        for dia, valor in [(ANTES, 10), (AYER, 30)] for hora in range(24)
+    ],
+}
+UNIDADES = {"time": "unixtime", "temperature_2m": "°C", "relative_humidity_2m": "%", "dew_point_2m": "°C"}
+PRONOSTICO = {
+    "current_units": UNIDADES, "hourly_units": UNIDADES,
+    "current": {"time": ts(HOY, 12) // 1000, "interval": 900, "temperature_2m": 25,
+                "relative_humidity_2m": 60, "dew_point_2m": 15, "weather_code": 3, "is_day": 1},
+    "hourly": {"time": [], "temperature_2m": []}, "daily": {"time": []},
+}
+
+# Estas pruebas verifican controles y datos. El dibujo se sustituye para no depender
+# de un CDN ni de animaciones; pruebas.html comprueba los cálculos de las series.
+CHART = """
+window.Chart = class {
+  constructor(canvas, config) { this.config = config; }
+  destroy() {}
+};
+"""
+
+
+class ServidorSilencioso(http.server.SimpleHTTPRequestHandler):
+    def log_message(self, *_):
+        pass
+
+
+class InterfazTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        manejador = functools.partial(ServidorSilencioso, directory=str(WEB))
+        cls.servidor = http.server.ThreadingHTTPServer(("127.0.0.1", 0), manejador)
+        cls.hilo = threading.Thread(target=cls.servidor.serve_forever, daemon=True)
+        cls.hilo.start()
+        cls.base = f"http://127.0.0.1:{cls.servidor.server_port}"
+        cls.playwright = sync_playwright().start()
+        ejecutable = os.environ.get("CHROMIUM_PATH") or shutil.which("chromium")
+        cls.browser = cls.playwright.chromium.launch(executable_path=ejecutable, headless=True)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.browser.close()
+        cls.playwright.stop()
+        cls.servidor.shutdown()
+        cls.servidor.server_close()
+        cls.hilo.join()
+
+    def setUp(self):
+        self.contexto = self.browser.new_context(viewport={"width": 390, "height": 844})
+        self.page = self.contexto.new_page()
+        self.errores = []
+        self.page.on("pageerror", lambda error: self.errores.append(str(error)))
+        self.page.clock.install(time=datetime.fromisoformat(HOY).replace(hour=12, tzinfo=CR))
+        self.page.route("https://cdnjs.cloudflare.com/**", lambda ruta: ruta.fulfill(
+            body=CHART if "chart.umd" in ruta.request.url else "", content_type="application/javascript"))
+        self.responder_firebase = self.firebase_normal
+        self.responder_clima = lambda ruta: ruta.fulfill(json=PRONOSTICO)
+        self.page.route(FIREBASE, lambda ruta: self.responder_firebase(ruta))
+        self.page.route(CLIMA, lambda ruta: self.responder_clima(ruta))
+
+    def tearDown(self):
+        self.contexto.close()
+        self.assertEqual(self.errores, [], "Errores de JavaScript no controlados")
+
+    def firebase_normal(self, ruta):
+        parametros = parse_qs(urlparse(ruta.request.url).query)
+        if "limitToFirst" in parametros:
+            datos = {"a": LECTURAS["a"]}
+        elif "limitToLast" in parametros:
+            datos = {"b": LECTURAS["b"]}
+        else:
+            datos = LECTURAS
+        ruta.fulfill(json=datos)
+
+    def abrir(self, fuente="esp32"):
+        preferencias = {"fuente": fuente, "tema": "claro", "clima_santa_clara": json.dumps(HISTORIAL)}
+        self.page.add_init_script("for (const [k,v] of Object.entries(" + json.dumps(preferencias) + ")) localStorage.setItem(k,v);")
+        self.page.goto(self.base, wait_until="networkidle")
+
+    def consultar_horas(self, fuente="esp32"):
+        self.abrir(fuente)
+        self.page.locator('[data-ir="hora"]').click()
+        self.page.locator("[data-consultar]").click()
+        expect(self.page.locator("[data-periodo]")).to_be_visible()
+
+    def test_pruebas_del_nucleo(self):
+        self.page.goto(self.base + "/pruebas.html")
+        expect(self.page.locator("#resumen")).to_contain_text("58")
+        self.assertEqual(self.page.locator(".fallo").count(), 0)
+
+    def test_firebase_vacio_no_reintenta_en_cada_render(self):
+        consultas = []
+        def vacio(ruta):
+            consultas.append(ruta.request.url)
+            ruta.fulfill(json=None)
+        self.responder_firebase = vacio
+        self.abrir()
+        for _ in range(3):
+            self.page.locator("#boton-tema").click()
+        self.page.wait_for_timeout(150)
+        limites = [url for url in consultas if '%22ts%22' in url]
+        self.assertEqual(len(limites), 2)
+
+    def test_pronostico_fallido_espera_y_permite_reintento_manual(self):
+        consultas = []
+        def fallo(ruta):
+            consultas.append(ruta.request.url)
+            ruta.fulfill(status=429, json={"error": True})
+        self.responder_clima = fallo
+        self.abrir("clima")
+        self.page.locator("#boton-tema").click()
+        expect(self.page.locator(".aviso--error")).to_contain_text("demasiadas consultas")
+        self.assertEqual(len(consultas), 1)
+        self.page.locator("[data-refrescar-clima]").click()
+        expect(self.page.locator(".aviso--error")).to_contain_text("demasiadas consultas")
+        self.assertEqual(len(consultas), 2)
+        self.page.clock.fast_forward(15 * 60 * 1000)
+        expect(self.page.locator(".aviso--error")).to_contain_text("demasiadas consultas")
+        self.assertEqual(len(consultas), 3)
+
+
+if __name__ == "__main__":
+    unittest.main()
