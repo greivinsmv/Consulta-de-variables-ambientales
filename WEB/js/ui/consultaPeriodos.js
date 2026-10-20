@@ -267,6 +267,9 @@ function resultados(modo, estado, datos, oscuro) {
   if (!estado.consulta) {
     return `<section class="tarjeta">${aviso("Elige las fechas y las variables, y pulsa Consultar.")}</section>`;
   }
+  if (!comparacionValida(estado.elegidas, estado.filtro)) {
+    return `<section class="tarjeta">${aviso("Completa los límites del filtro para ver o exportar los resultados.")}</section>`;
+  }
 
   const config = MODOS[modo];
   const filtrados = datosComparacion(estado.registros, estado.elegidas, estado.filtro);
@@ -359,7 +362,8 @@ export function render(modo, datos, oscuro) {
 
 async function consultar(modo, datos, volverAPintar) {
   const estado = estados[modo];
-  if (errorDeFechas(modo, estado, datos)) return;
+  if (estado.cargando || errorDeFechas(modo, estado, datos) ||
+      !comparacionValida(estado.elegidas, estado.filtro)) return;
   const consulta = modo === "hora"
     ? { dia: estado.dia }
     : { inicio: estado.inicio, fin: estado.fin };
@@ -409,6 +413,9 @@ async function consultar(modo, datos, volverAPintar) {
  * archivo seguiría correspondiendo a lo que el usuario vio.
  */
 function exportar(formato, modo, estado, datos, lienzo) {
+  if (!estado.consulta || !comparacionValida(estado.elegidas, estado.filtro)) {
+    throw new Error("Completa los límites del filtro antes de exportar.");
+  }
   const config = MODOS[modo];
   const filtrados = datosComparacion(estado.registros, estado.elegidas, estado.filtro);
   const resultados = resultadosPorVariable(modo, estado, filtrados);

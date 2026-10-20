@@ -124,6 +124,34 @@ class InterfazTest(unittest.TestCase):
         expect(self.page.locator("#resumen")).to_contain_text("58")
         self.assertEqual(self.page.locator(".fallo").count(), 0)
 
+    def test_filtro_invalido_oculta_resultados_y_exportaciones(self):
+        self.consultar_horas()
+        self.page.locator("[data-filtro-activo]").click()
+        self.page.locator('[data-limite="maximo"]').fill("25")
+        expect(self.page.locator(".estadisticas")).to_contain_text("1 lecturas")
+        self.page.locator('[data-limite="maximo"]').fill("")
+        expect(self.page.locator("[data-consultar]")).to_be_disabled()
+        expect(self.page.locator("[data-exportar]")).to_have_count(0)
+        expect(self.page.locator(".estadisticas")).to_have_count(0)
+        self.page.locator('[data-limite="maximo"]').fill("25")
+        expect(self.page.locator(".estadisticas")).to_contain_text("1 lecturas")
+        with self.page.expect_download() as descarga:
+            self.page.locator('[data-exportar="csv"]').click()
+        csv = Path(descarga.value.path()).read_text(encoding="utf-8-sig")
+        self.assertIn("limite_superior", csv)
+        self.assertNotIn('"30,000"', csv)
+
+    def test_extremos_no_exporta_con_filtro_invalido(self):
+        self.abrir()
+        self.page.locator('[data-ir="historico"]').click()
+        self.page.locator("[data-consultar]").click()
+        expect(self.page.locator(".panel-extremo")).to_have_count(2)
+        self.page.locator("[data-filtro-activo]").click()
+        self.page.locator('[data-limite="minimo"]').fill("no es un numero")
+        expect(self.page.locator("[data-exportar]")).to_have_count(0)
+        expect(self.page.locator(".panel-extremo")).to_have_count(0)
+        expect(self.page.locator("[data-consultar]")).to_be_disabled()
+
     def test_resumen_y_exportaciones_respetan_el_dia_consultado(self):
         self.consultar_horas("clima")
         resumen = self.page.locator(".estadisticas")
