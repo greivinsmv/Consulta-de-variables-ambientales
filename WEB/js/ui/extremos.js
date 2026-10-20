@@ -15,7 +15,7 @@ import {
 } from "../modelo.js";
 import { extremosHistoricos, distribucion } from "../consultas.js";
 import {
-  filtrarLecturas, limitesComparacion, interpretarLimites, configuracionFiltroInicial
+  filtrarLecturas, limitesComparacion, comparacionValida, configuracionFiltroInicial
 } from "../filtro.js";
 import { leerHistorialCompleto } from "../firebase.js";
 import {
@@ -78,8 +78,7 @@ function periodoAnalizado(datos) {
 }
 
 function controles(datos) {
-  const filtroValido = !estado.filtro.activo ||
-    interpretarLimites(estado.filtro.limites[estado.variable]) !== null;
+  const filtroValido = comparacionValida([estado.variable], estado.filtro);
 
   return `
     <section class="tarjeta pila">
@@ -112,6 +111,9 @@ function resultados(datos) {
   if (estado.error) return `<section class="tarjeta">${aviso(estado.error, "error")}</section>`;
   if (!estado.consultada) {
     return `<section class="tarjeta">${aviso("Elige una variable y pulsa Consultar.")}</section>`;
+  }
+  if (!comparacionValida([estado.consultada], estado.filtro)) {
+    return `<section class="tarjeta">${aviso("Completa los límites del filtro para ver o exportar los resultados.")}</section>`;
   }
 
   const variable = variablePorClave(estado.consultada);
@@ -175,32 +177,40 @@ export function render(datos, oscuro) {
 }
 
 async function consultar(datos, volverAPintar) {
-  estado.cargando = true;
-  estado.error = "";
+  if (estado.cargando || !comparacionValida([estado.variable], estado.filtro)) return;
+  const consulta = estado;
+  const variable = consulta.variable;
+  consulta.cargando = true;
+  consulta.error = "";
   volverAPintar();
 
   try {
-    if (datos.tipo === "clima") {
-      estado.registros = datos.historial?.registros ?? [];
-      estado.descartados = 0;
-    } else {
-      const { registros, descartados } = await leerHistorialCompleto();
-      estado.registros = registros;
-      estado.descartados = descartados;
-    }
-    estado.consultada = estado.variable;
+    const resultado = datos.tipo === "clima"
+      ? { registros: datos.historial?.registros ?? [], descartados: 0 }
+      : await leerHistorialCompleto();
+    // reiniciar() reemplaza el estado al cambiar de fuente o zona.
+    if (consulta !== estado) return;
+    consulta.registros = resultado.registros;
+    consulta.descartados = resultado.descartados;
+    consulta.consultada = variable;
   } catch (error) {
-    estado.error = error.message;
-    estado.consultada = null;
-    estado.registros = [];
+    if (consulta !== estado) return;
+    consulta.error = error.message;
+    consulta.consultada = null;
+    consulta.registros = [];
   } finally {
-    estado.cargando = false;
-    volverAPintar();
+    if (consulta === estado) {
+      consulta.cargando = false;
+      volverAPintar();
+    }
   }
 }
 
 /** Exporta el mínimo y el máximo de la variable consultada. */
 function exportar(formato, datos) {
+  if (!estado.consultada || !comparacionValida([estado.consultada], estado.filtro)) {
+    throw new Error("Completa los límites del filtro antes de exportar.");
+  }
   const variable = variablePorClave(estado.consultada);
   const limites = limitesComparacion(estado.filtro, estado.consultada);
   const filtrados = filtrarLecturas(estado.registros, estado.consultada, limites);
@@ -248,7 +258,8 @@ function exportar(formato, datos) {
 
 export function conectar(raiz, datos, oscuro, volverAPintar) {
   raiz.querySelector("[data-variable-select]")?.addEventListener("change", (evento) => {
-    estado.variable = evento.target.value;
+    estado = { ...estado, variable: evento.target.value, consultada: null,
+      registros: [], error: "", cargando: false };
     destruirGrafica();
     volverAPintar();
   });

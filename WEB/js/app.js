@@ -47,7 +47,7 @@ export const estado = {
   zonaId: preferencia("zona_clima", "santa_clara"),
   oscuro: preferencia("tema", null) === null ? prefiereOscuro() : preferencia("tema") === "oscuro",
   info: false,
-  esp32: { periodo: null, cargandoPeriodo: false },
+  esp32: { periodo: null, cargandoPeriodo: false, ultimoIntentoPeriodo: null },
   clima: {
     pronostico: null,
     historial: null,
@@ -83,16 +83,26 @@ export const fuenteDatos = () => estado.fuente === "clima"
     };
 
 /**
- * Averigua entre qué fechas hay lecturas del ESP32, una sola vez por sesión.
+ * Averigua entre qué fechas hay lecturas del ESP32.
  * Si falla, los selectores se quedan sin acotar: es una ayuda, no un requisito.
  */
-async function cargarPeriodoEsp32() {
-  if (estado.esp32.periodo || estado.esp32.cargandoPeriodo) return;
+async function cargarPeriodoEsp32({ refrescar = false } = {}) {
+  if (estado.esp32.cargandoPeriodo || (estado.esp32.periodo && !refrescar)) return;
+  // Un rango vacío también es una respuesta válida. No se vuelve a pedir en cada render.
+  const ultimoIntento = estado.esp32.ultimoIntentoPeriodo;
+  if (ultimoIntento !== null && Date.now() - ultimoIntento < 30000) return;
+  estado.esp32.ultimoIntentoPeriodo = Date.now();
   estado.esp32.cargandoPeriodo = true;
   try {
-    estado.esp32.periodo = await rangoDisponible();
+    const periodo = await rangoDisponible();
+    const conocido = estado.esp32.periodo;
+    // Inicio puede recibir una lectura nueva mientras se consultan estos límites.
+    estado.esp32.periodo = periodo && conocido ? {
+      inicio: periodo.inicio < conocido.inicio ? periodo.inicio : conocido.inicio,
+      fin: periodo.fin > conocido.fin ? periodo.fin : conocido.fin
+    } : periodo ?? conocido;
   } catch {
-    estado.esp32.periodo = null;
+    // Se conservan las fechas que ya se conocen por lecturas o consultas anteriores.
   } finally {
     estado.esp32.cargandoPeriodo = false;
     render();
@@ -124,28 +134,33 @@ let temporizadorClima = null;
 // aparecer bajo el título de Liberia.
 let peticionPronostico = null;
 let peticionHistorial = null;
+let ultimoIntentoPronostico = null;
 
 export async function actualizarPronostico({ forzar = false } = {}) {
   const zona = zonaActual();
   if (estado.clima.cargandoPronostico && !forzar) return;
 
   peticionPronostico?.abort();
-  peticionPronostico = new AbortController();
+  const controlador = new AbortController();
+  peticionPronostico = controlador;
+  ultimoIntentoPronostico = Date.now();
   estado.clima.cargandoPronostico = true;
   estado.clima.errorPronostico = "";
   render();
 
   try {
-    const pronostico = await descargarPronostico(zona, { señal: peticionPronostico.signal });
-    if (pronostico.zonaId !== estado.zonaId) return;
+    const pronostico = await descargarPronostico(zona, { señal: controlador.signal });
+    if (controlador !== peticionPronostico || pronostico.zonaId !== estado.zonaId) return;
     estado.clima.pronostico = pronostico;
   } catch (error) {
-    if (error.name === "AbortError") return;
+    if (error.name === "AbortError" || controlador !== peticionPronostico) return;
     // Se conserva el último resultado de la zona y se avisa de su antigüedad.
     estado.clima.errorPronostico = error.message;
   } finally {
-    if (peticionPronostico?.signal.aborted !== true) estado.clima.cargandoPronostico = false;
-    render();
+    if (controlador === peticionPronostico) {
+      estado.clima.cargandoPronostico = false;
+      render();
+    }
   }
 }
 
@@ -188,15 +203,19 @@ function recuperarHistorialGuardado() {
  * no tiene sentido consultar la API para una vista que nadie está mirando.
  */
 function programarPronostico() {
-  clearInterval(temporizadorClima);
+  clearTimeout(temporizadorClima);
   temporizadorClima = null;
 
   const activo = estado.fuente === "clima" && estado.pantalla === "actual" &&
     !estado.info && document.visibilityState === "visible";
   if (!activo) return;
+  if (estado.clima.cargandoPronostico) return;
 
-  if (!estado.clima.pronostico && !estado.clima.cargandoPronostico) actualizarPronostico();
-  temporizadorClima = setInterval(() => actualizarPronostico(), INTERVALO_CONSULTA_CLIMA);
+  // Los fallos también cuentan como intentos: un 429 no debe desencadenar otro fetch.
+  const restante = ultimoIntentoPronostico === null ? 0
+    : Math.max(0, INTERVALO_CONSULTA_CLIMA - (Date.now() - ultimoIntentoPronostico));
+  if (restante === 0) actualizarPronostico();
+  else temporizadorClima = setTimeout(actualizarPronostico, restante);
 }
 
 // --- Navegación y preferencias ----------------------------------------------------------
@@ -204,6 +223,9 @@ function programarPronostico() {
 export function irA(pantalla) {
   if (estado.pantalla === pantalla) return;
   estado.pantalla = pantalla;
+  if (estado.fuente === "esp32" && (pantalla === "hora" || pantalla === "dia")) {
+    cargarPeriodoEsp32({ refrescar: true });
+  }
   destruirGrafica();
   render();
   document.getElementById("contenido").focus({ preventScroll: true });
@@ -224,6 +246,10 @@ export function cambiarZona(zonaId) {
   if (estado.zonaId === zonaId) return;
   estado.zonaId = zonaId;
   guardarPreferencia("zona_clima", zonaId);
+  peticionPronostico?.abort();
+  peticionPronostico = null;
+  ultimoIntentoPronostico = null;
+  estado.clima.cargandoPronostico = false;
   // Cambiar de zona limpia lo consultado y muestra únicamente el historial de la nueva.
   estado.clima.pronostico = null;
   estado.clima.errorPronostico = "";
@@ -233,7 +259,6 @@ export function cambiarZona(zonaId) {
   porPeriodo.reiniciar();
   extremos.reiniciar();
   render();
-  if (estado.fuente === "clima" && estado.pantalla === "actual") actualizarPronostico();
 }
 
 function alternarTema() {
