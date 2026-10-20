@@ -360,35 +360,42 @@ export function render(modo, datos, oscuro) {
 async function consultar(modo, datos, volverAPintar) {
   const estado = estados[modo];
   if (errorDeFechas(modo, estado, datos)) return;
+  const consulta = modo === "hora"
+    ? { dia: estado.dia }
+    : { inicio: estado.inicio, fin: estado.fin };
 
   estado.cargando = true;
   estado.error = "";
   volverAPintar();
 
   try {
+    let registros;
     if (datos.tipo === "clima") {
       // Si el periodo elegido no está en el historial que hay en memoria, se descarga.
       const rango = modo === "hora"
-        ? { inicio: estado.dia, fin: estado.dia }
-        : { inicio: estado.inicio, fin: estado.fin };
+        ? { inicio: consulta.dia, fin: consulta.dia }
+        : consulta;
       const historial = await datos.asegurar(rango);
-      estado.registros = historial?.registros ?? [];
+      registros = historial?.registros ?? [];
     } else if (modo === "hora") {
-      estado.registros = (await leerDia(estado.dia)).registros;
+      registros = (await leerDia(consulta.dia)).registros;
     } else {
-      estado.registros = (await leerRangoFechas(estado.inicio, estado.fin)).registros;
+      registros = (await leerRangoFechas(consulta.inicio, consulta.fin)).registros;
     }
-    estado.consulta = modo === "hora"
-      ? { dia: estado.dia }
-      : { inicio: estado.inicio, fin: estado.fin };
+    if (estado !== estados[modo]) return;
+    estado.registros = registros;
+    estado.consulta = consulta;
     estado.seleccion = modo === "hora" ? 0 : 0;
   } catch (error) {
+    if (estado !== estados[modo]) return;
     estado.error = error.message;
     estado.consulta = null;
     estado.registros = [];
   } finally {
-    estado.cargando = false;
-    volverAPintar();
+    if (estado === estados[modo]) {
+      estado.cargando = false;
+      volverAPintar();
+    }
   }
 }
 
@@ -507,12 +514,10 @@ export function conectar(raiz, modo, datos, oscuro, volverAPintar) {
 
   raiz.querySelectorAll("[data-fecha]").forEach((campo) => {
     campo.addEventListener("change", () => {
-      estado[campo.dataset.fecha] = campo.value;
       // Cambiar las fechas descarta la consulta anterior: sus resultados ya no
-      // corresponden a lo que muestran los controles.
-      estado.consulta = null;
-      estado.registros = [];
-      estado.error = "";
+      // corresponden a lo que muestran los controles, aunque aún esté descargando.
+      estados[modo] = { ...estado, [campo.dataset.fecha]: campo.value,
+        consulta: null, registros: [], error: "", cargando: false };
       destruirGrafica();
       volverAPintar();
     });

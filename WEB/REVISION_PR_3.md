@@ -6,7 +6,7 @@ Rama de trabajo: `fix/web-consultas-confiables`.
 Una tarea se marca terminada después de ejecutar su prueba de regresión.
 
 - [x] Limitar los reintentos de Firebase y Open-Meteo cuando faltan datos o falla la conexión.
-- [ ] Descartar respuestas pendientes al cambiar de fuente, zona o fechas.
+- [x] Descartar respuestas pendientes al cambiar de fuente, zona o fechas.
 - [ ] Calcular el resumen y el PDF solo con los registros del periodo consultado.
 - [ ] Bloquear resultados y exportaciones si el filtro activo es inválido.
 - [ ] Conservar el foco y el cursor al escribir los límites del filtro.
