@@ -69,3 +69,10 @@ y en [REVISION_PR_3.md](REVISION_PR_3.md).
 
 Consulta también la [descripción general](../README.md) y la
 [documentación de Android](../APP-MOVIL/README.md).
+
+## Acceso a los datos
+
+La web consulta únicamente `lecturas/equipo01`, sin leer la raíz de la base. Las reglas
+permiten la lectura pública de esa ruta y reservan la creación de registros al UID del
+ESP32. No incluyas credenciales de escritura o administración en el frontend. Consulta
+[la guía de acceso](../firebase/README.md) para preparar las reglas del proyecto.

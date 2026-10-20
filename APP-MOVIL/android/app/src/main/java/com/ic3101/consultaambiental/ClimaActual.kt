@@ -1,27 +1,10 @@
 package com.ic3101.consultaambiental
 
-import androidx.compose.foundation.layout.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.io.IOException
-import java.net.URL
-import java.time.Instant
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import javax.net.ssl.HttpsURLConnection
 
 internal const val intervaloConsultaClima = 15 * 60 * 1000L
 internal data class ClimaActual(val registro: RegistroAmbiental, val consultadoEn: Long, val intervaloSegundos: Int)
-internal fun urlClimaActual(): String =
-    "https://api.open-meteo.com/v1/forecast?latitude=$latitudSantaClara&longitude=$longitudSantaClara" +
-        "&current=temperature_2m,relative_humidity_2m,dew_point_2m&temperature_unit=celsius" +
-        "&timeformat=unixtime&timezone=America%2FCosta_Rica&forecast_days=1"
-
+/** Lee los valores actuales y conserva por separado la fecha del modelo y la de consulta. */
 internal fun interpretarClimaActual(json: String, consultadoEn: Long): ClimaActual {
     val respuesta = JSONObject(json)
     require(!respuesta.optBoolean("error")) { "Open-Meteo rechazó la consulta actual." }
@@ -48,49 +31,5 @@ internal fun interpretarClimaActual(json: String, consultadoEn: Long): ClimaActu
     return ClimaActual(RegistroAmbiental(segundos!!.toLong() * 1000, valores), consultadoEn, intervalo!!.toInt())
 }
 
-internal suspend fun descargarClimaActual(): ClimaActual = withContext(Dispatchers.IO) {
-    val conexion = URL(urlClimaActual()).openConnection() as HttpsURLConnection
-    conexion.connectTimeout = 15000
-    conexion.readTimeout = 20000
-    val json = try {
-        if (conexion.responseCode != 200) throw IOException("Open-Meteo respondió HTTP ${conexion.responseCode}.")
-        conexion.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
-    } finally { conexion.disconnect() }
-    interpretarClimaActual(json, Instant.now().toEpochMilli())
-}
-
 internal fun datoActualAnterior(clima: ClimaActual, ahora: Long): Boolean =
     ahora - clima.registro.ts > maxOf(30 * 60 * 1000L, clima.intervaloSegundos * 2000L)
-
-@Composable
-internal fun VistaClimaActual(clima: ClimaActual?, cargando: Boolean, mensaje: String?, alActualizar: () -> Unit) {
-    val ahora = System.currentTimeMillis()
-    fun valor(clave: String, unidad: String) = clima?.registro?.valores?.get(clave)?.let {
-        String.format(Locale.getDefault(), "%.1f %s", it, unidad)
-    } ?: "Sin dato"
-    fun fecha(ts: Long) = Instant.ofEpochMilli(ts).atZone(zonaConsulta)
-        .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text("Clima actual", style = MaterialTheme.typography.titleLarge)
-        OutlinedButton(enabled = !cargando, onClick = alActualizar) { Text("Actualizar ahora") }
-        if (cargando) LinearProgressIndicator(Modifier.fillMaxWidth())
-        mensaje?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        if (clima != null) {
-            if (datoActualAnterior(clima, ahora)) {
-                Text("La última estimación disponible es de ${fecha(clima.registro.ts)}. Puede no representar las condiciones actuales.",
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
-            }
-            TarjetaTemperatura(valor("temperatura", "°C"))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TarjetaMedicion("Humedad", valor("humedad", "%"), "humedad", Modifier.weight(1f))
-                TarjetaMedicion("Punto de rocío", valor("puntoRocio", "°C"), "rocio", Modifier.weight(1f))
-            }
-            Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Fecha del dato", style = MaterialTheme.typography.titleSmall)
-                    Text(fecha(clima.registro.ts))
-                }
-            }
-        } else if (!cargando && mensaje == null) Text("Pulsa Actualizar ahora para consultar el clima.")
-    }
-}

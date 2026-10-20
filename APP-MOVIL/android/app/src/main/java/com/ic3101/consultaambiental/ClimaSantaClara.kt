@@ -11,26 +11,22 @@ import java.time.Instant
 import java.time.LocalDate
 import javax.net.ssl.HttpsURLConnection
 
-internal const val latitudSantaClara = 10.36
-internal const val longitudSantaClara = -84.51
 internal const val urlProveedorClima = "https://open-meteo.com/"
 internal const val licenciaClima = "https://creativecommons.org/licenses/by/4.0/"
 internal data class OrigenDatos(
     val fuente: String, val ubicacion: String, val latitud: Double, val longitud: Double,
     val proveedor: String, val licencia: String
 )
-internal val origenSantaClara = OrigenDatos("Open-Meteo · datos modelados", "Santa Clara, San Carlos, Costa Rica",
-    latitudSantaClara, longitudSantaClara, urlProveedorClima, licenciaClima)
-internal data class HistorialClima(val rango: RangoFechas, val registros: List<RegistroAmbiental>, val descargadoEn: Long) {
-    val origen: OrigenDatos get() = origenSantaClara
+internal data class HistorialClima(val rango: RangoFechas, val registros: List<RegistroAmbiental>, val descargadoEn: Long, val ubicacion: ZonaClimatica = santaClara) {
+    val origen: OrigenDatos get() = ubicacion.origen
 }
 internal fun ultimosDiezDias(hoy: LocalDate) = RangoFechas(hoy.minusDays(10), hoy.minusDays(1))
-internal fun urlClima(rango: RangoFechas): String =
-    "https://api.open-meteo.com/v1/forecast?latitude=$latitudSantaClara&longitude=$longitudSantaClara" +
+internal fun urlClima(rango: RangoFechas, ubicacion: ZonaClimatica = santaClara): String =
+    "https://api.open-meteo.com/v1/forecast?latitude=${ubicacion.latitud}&longitude=${ubicacion.longitud}" +
         "&hourly=temperature_2m,relative_humidity_2m,dew_point_2m&temperature_unit=celsius" +
         "&timeformat=unixtime&timezone=America%2FCosta_Rica&start_date=${rango.inicio}&end_date=${rango.fin}"
 
-internal fun interpretarClima(json: String, rango: RangoFechas, descargadoEn: Long): HistorialClima {
+internal fun interpretarClima(json: String, rango: RangoFechas, descargadoEn: Long, ubicacion: ZonaClimatica = santaClara): HistorialClima {
     require(rango == ultimosDiezDias(rango.fin.plusDays(1))) { "El periodo debe abarcar diez días completos." }
     val respuesta = JSONObject(json)
     require(!respuesta.optBoolean("error")) { "Open-Meteo rechazó la consulta." }
@@ -58,32 +54,32 @@ internal fun interpretarClima(json: String, rango: RangoFechas, descargadoEn: Lo
         RegistroAmbiental(segundos!!.toLong() * 1000, valores)
     }
     require(registros.any { it.valores.isNotEmpty() }) { "La API no devolvió valores válidos." }
-    return HistorialClima(rango, registros, descargadoEn)
+    return HistorialClima(rango, registros, descargadoEn, ubicacion)
 }
 
-/** Archivo privado y atómico: conserva la última descarga válida sin escribir en Firebase. */
-internal class RepositorioClima(directorio: File) {
-    private val archivo = AtomicFile(File(directorio, "clima_santa_clara.json"))
+/** Una copia atómica por zona: una descarga fallida conserva el historial anterior. */
+internal class RepositorioClima(directorio: File, private val ubicacion: ZonaClimatica = santaClara) {
+    private val archivo = AtomicFile(File(directorio, "clima_${ubicacion.id}.json"))
     suspend fun leerGuardado(): HistorialClima? = withContext(Dispatchers.IO) {
         try {
             val copia = JSONObject(archivo.openRead().bufferedReader(Charsets.UTF_8).use { it.readText() })
-            require(copia.getDouble("latitud") == latitudSantaClara && copia.getDouble("longitud") == longitudSantaClara)
+            require(copia.getDouble("latitud") == ubicacion.latitud && copia.getDouble("longitud") == ubicacion.longitud)
             interpretarClima(copia.getString("respuesta"),
                 RangoFechas(LocalDate.parse(copia.getString("inicio")), LocalDate.parse(copia.getString("fin"))),
-                copia.getLong("descargado_en"))
+                copia.getLong("descargado_en"), ubicacion)
         } catch (_: Exception) { null }
     }
     suspend fun descargar(): HistorialClima = withContext(Dispatchers.IO) {
         val rango = ultimosDiezDias(LocalDate.now(zonaConsulta))
-        val conexion = URL(urlClima(rango)).openConnection() as HttpsURLConnection
+        val conexion = URL(urlClima(rango, ubicacion)).openConnection() as HttpsURLConnection
         conexion.connectTimeout = 15000
         conexion.readTimeout = 20000
         val json = try {
             if (conexion.responseCode != 200) throw IOException("Open-Meteo respondió HTTP ${conexion.responseCode}. Intenta nuevamente más tarde.")
             conexion.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
         } finally { conexion.disconnect() }
-        val historial = interpretarClima(json, rango, Instant.now().toEpochMilli())
-        val copia = JSONObject().put("latitud", latitudSantaClara).put("longitud", longitudSantaClara)
+        val historial = interpretarClima(json, rango, Instant.now().toEpochMilli(), ubicacion)
+        val copia = JSONObject().put("latitud", ubicacion.latitud).put("longitud", ubicacion.longitud)
             .put("inicio", rango.inicio.toString()).put("fin", rango.fin.toString())
             .put("descargado_en", historial.descargadoEn).put("respuesta", json).toString()
         val salida = archivo.startWrite()
