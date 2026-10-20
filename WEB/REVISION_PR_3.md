@@ -2,6 +2,7 @@
 
 Seguimiento del [PR #3: Feat/pagina web](https://github.com/greivinsmv/Consulta-de-variables-ambientales/pull/3).
 Rama de trabajo: `fix/web-consultas-confiables`.
+Checklist en GitHub: [issue #4](https://github.com/greivinsmv/Consulta-de-variables-ambientales/issues/4).
 
 Una tarea se marca terminada después de ejecutar su prueba de regresión.
 
@@ -9,7 +10,7 @@ Una tarea se marca terminada después de ejecutar su prueba de regresión.
 - [x] Descartar respuestas pendientes al cambiar de fuente, zona o fechas.
 - [x] Calcular el resumen y el PDF solo con los registros del periodo consultado.
 - [x] Bloquear resultados y exportaciones si el filtro activo es inválido.
-- [ ] Conservar el foco y el cursor al escribir los límites del filtro.
+- [x] Conservar el foco y el cursor al escribir los límites del filtro.
 - [ ] Respetar la selección de horas y días sin lecturas.
 - [ ] Actualizar las fechas disponibles cuando llegan nuevas lecturas del ESP32.
 - [ ] Recuperar Inicio después de un error aunque la última lectura no haya cambiado.
