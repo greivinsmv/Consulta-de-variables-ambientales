@@ -11,7 +11,7 @@
 
 import {
   variablePorClave, hoyCR, sumarDias, franjaHoraria, fechasDelRango, diasEntre,
-  formatearFecha, formatearFechaCorta
+  formatearFecha, formatearFechaCorta, inicioDiaCR, finDiaExclusivoCR
 } from "../modelo.js";
 import {
   promediosPorHora, promediosDiarios, errorRango, resumenEstadistico
@@ -383,7 +383,11 @@ async function consultar(modo, datos, volverAPintar) {
       registros = (await leerRangoFechas(consulta.inicio, consulta.fin)).registros;
     }
     if (estado !== estados[modo]) return;
-    estado.registros = registros;
+    // El caché puede cubrir más días que la consulta. El resumen, el filtro y el PDF
+    // deben trabajar con el mismo periodo que las series y el CSV.
+    const desde = inicioDiaCR(consulta.dia ?? consulta.inicio);
+    const hasta = finDiaExclusivoCR(consulta.dia ?? consulta.fin);
+    estado.registros = registros.filter((registro) => registro.ts >= desde && registro.ts < hasta);
     estado.consulta = consulta;
     estado.seleccion = modo === "hora" ? 0 : 0;
   } catch (error) {
