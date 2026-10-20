@@ -175,27 +175,31 @@ export function render(datos, oscuro) {
 }
 
 async function consultar(datos, volverAPintar) {
-  estado.cargando = true;
-  estado.error = "";
+  const consulta = estado;
+  const variable = consulta.variable;
+  consulta.cargando = true;
+  consulta.error = "";
   volverAPintar();
 
   try {
-    if (datos.tipo === "clima") {
-      estado.registros = datos.historial?.registros ?? [];
-      estado.descartados = 0;
-    } else {
-      const { registros, descartados } = await leerHistorialCompleto();
-      estado.registros = registros;
-      estado.descartados = descartados;
-    }
-    estado.consultada = estado.variable;
+    const resultado = datos.tipo === "clima"
+      ? { registros: datos.historial?.registros ?? [], descartados: 0 }
+      : await leerHistorialCompleto();
+    // reiniciar() reemplaza el estado al cambiar de fuente o zona.
+    if (consulta !== estado) return;
+    consulta.registros = resultado.registros;
+    consulta.descartados = resultado.descartados;
+    consulta.consultada = variable;
   } catch (error) {
-    estado.error = error.message;
-    estado.consultada = null;
-    estado.registros = [];
+    if (consulta !== estado) return;
+    consulta.error = error.message;
+    consulta.consultada = null;
+    consulta.registros = [];
   } finally {
-    estado.cargando = false;
-    volverAPintar();
+    if (consulta === estado) {
+      consulta.cargando = false;
+      volverAPintar();
+    }
   }
 }
 
@@ -248,7 +252,8 @@ function exportar(formato, datos) {
 
 export function conectar(raiz, datos, oscuro, volverAPintar) {
   raiz.querySelector("[data-variable-select]")?.addEventListener("change", (evento) => {
-    estado.variable = evento.target.value;
+    estado = { ...estado, variable: evento.target.value, consultada: null,
+      registros: [], error: "", cargando: false };
     destruirGrafica();
     volverAPintar();
   });

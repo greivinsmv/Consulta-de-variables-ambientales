@@ -124,6 +124,42 @@ class InterfazTest(unittest.TestCase):
         expect(self.page.locator("#resumen")).to_contain_text("58")
         self.assertEqual(self.page.locator(".fallo").count(), 0)
 
+    def test_extremos_descarta_respuesta_de_otra_fuente(self):
+        self.abrir()
+        self.page.locator('[data-ir="historico"]').click()
+        pendientes = []
+        self.responder_firebase = lambda ruta: pendientes.append(ruta)
+        self.page.locator("[data-consultar]").click()
+        self.page.wait_for_function("document.querySelector('[data-consultar]').disabled")
+        self.assertEqual(len(pendientes), 1)
+        self.page.locator('[data-fuente="clima"]').click()
+        self.page.locator("[data-consultar]").click()
+        expect(self.page.locator(".panel-extremo__valor")).to_have_text(["10,0 °C", "30,0 °C"])
+        pendientes[0].fulfill(json={"tardia": lectura(99)})
+        self.page.wait_for_timeout(100)
+        expect(self.page.locator(".panel-extremo__valor")).to_have_text(["10,0 °C", "30,0 °C"])
+
+    def test_cambiar_fecha_descarta_consulta_pendiente(self):
+        def dos_dias(ruta):
+            parametros = parse_qs(urlparse(ruta.request.url).query)
+            if "limitToFirst" in parametros:
+                ruta.fulfill(json={"anterior": lectura(10, ANTES)})
+            else:
+                self.firebase_normal(ruta)
+        self.responder_firebase = dos_dias
+        self.abrir()
+        self.page.locator('[data-ir="hora"]').click()
+        pendientes = []
+        self.responder_firebase = lambda ruta: pendientes.append(ruta)
+        self.page.locator("[data-consultar]").click()
+        self.page.wait_for_function("document.querySelector('[data-consultar]').disabled")
+        self.assertEqual(len(pendientes), 1)
+        self.page.locator('[data-fecha="dia"]').fill(ANTES)
+        pendientes[0].fulfill(json=LECTURAS)
+        self.page.wait_for_timeout(100)
+        expect(self.page.locator("[data-periodo]")).to_have_count(0)
+        expect(self.page.locator("[data-consultar]")).to_be_enabled()
+
     def test_firebase_vacio_no_reintenta_en_cada_render(self):
         consultas = []
         def vacio(ruta):
