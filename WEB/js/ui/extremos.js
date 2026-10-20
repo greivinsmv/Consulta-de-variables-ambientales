@@ -15,7 +15,7 @@ import {
 } from "../modelo.js";
 import { extremosHistoricos, distribucion } from "../consultas.js";
 import {
-  filtrarLecturas, limitesComparacion, interpretarLimites, configuracionFiltroInicial
+  filtrarLecturas, limitesComparacion, comparacionValida, configuracionFiltroInicial
 } from "../filtro.js";
 import { leerHistorialCompleto } from "../firebase.js";
 import {
@@ -78,8 +78,7 @@ function periodoAnalizado(datos) {
 }
 
 function controles(datos) {
-  const filtroValido = !estado.filtro.activo ||
-    interpretarLimites(estado.filtro.limites[estado.variable]) !== null;
+  const filtroValido = comparacionValida([estado.variable], estado.filtro);
 
   return `
     <section class="tarjeta pila">
@@ -112,6 +111,9 @@ function resultados(datos) {
   if (estado.error) return `<section class="tarjeta">${aviso(estado.error, "error")}</section>`;
   if (!estado.consultada) {
     return `<section class="tarjeta">${aviso("Elige una variable y pulsa Consultar.")}</section>`;
+  }
+  if (!comparacionValida([estado.consultada], estado.filtro)) {
+    return `<section class="tarjeta">${aviso("Completa los límites del filtro para ver o exportar los resultados.")}</section>`;
   }
 
   const variable = variablePorClave(estado.consultada);
@@ -175,6 +177,7 @@ export function render(datos, oscuro) {
 }
 
 async function consultar(datos, volverAPintar) {
+  if (estado.cargando || !comparacionValida([estado.variable], estado.filtro)) return;
   const consulta = estado;
   const variable = consulta.variable;
   consulta.cargando = true;
@@ -205,6 +208,9 @@ async function consultar(datos, volverAPintar) {
 
 /** Exporta el mínimo y el máximo de la variable consultada. */
 function exportar(formato, datos) {
+  if (!estado.consultada || !comparacionValida([estado.consultada], estado.filtro)) {
+    throw new Error("Completa los límites del filtro antes de exportar.");
+  }
   const variable = variablePorClave(estado.consultada);
   const limites = limitesComparacion(estado.filtro, estado.consultada);
   const filtrados = filtrarLecturas(estado.registros, estado.consultada, limites);
