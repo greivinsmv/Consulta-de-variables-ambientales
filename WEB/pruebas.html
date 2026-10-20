@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pruebas · Consulta Ambiental</title>
+<style>
+  :root {
+    --fondo: #F6F5FC; --superficie: #FFFFFF; --primario: #7055C5;
+    --texto: #302547; --tenue: #665C7D; --borde: #E3DDF0;
+    --bien: #007E78; --mal: #BB397C;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fondo: #151221; --superficie: #211C30; --primario: #C7ADFF;
+      --texto: #ECE6F7; --tenue: #CCC0DD; --borde: #473D58;
+      --bien: #6ADBD3; --mal: #FFA4D0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 0 16px 48px; background: var(--fondo); color: var(--texto);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .contenedor { max-width: 860px; margin: 0 auto; }
+  header {
+    background: linear-gradient(120deg, #5262C7, #9250CE); color: #fff;
+    border-radius: 0 0 22px 22px; padding: 22px 20px; margin: 0 -16px 22px;
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.3rem; font-weight: 600; }
+  header p { margin: 0; opacity: .9; font-size: .9rem; }
+  #resumen {
+    position: sticky; top: 0; z-index: 2; background: var(--superficie);
+    border: 1px solid var(--borde); border-radius: 14px;
+    padding: 14px 18px; margin-bottom: 18px; font-weight: 600;
+  }
+  .grupo { margin-bottom: 20px; }
+  .grupo > h2 {
+    font-size: .78rem; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--tenue); margin: 0 0 8px; font-weight: 600;
+  }
+  .caso {
+    display: flex; gap: 10px; align-items: baseline; padding: 8px 14px;
+    background: var(--superficie); border: 1px solid var(--borde);
+    border-radius: 10px; margin-bottom: 5px;
+  }
+  .marca { font-weight: 700; flex-shrink: 0; }
+  .ok .marca { color: var(--bien); }
+  .fallo .marca { color: var(--mal); }
+  .fallo { border-color: var(--mal); }
+  .detalle {
+    display: block; color: var(--mal); font-size: .85rem;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+<div class="contenedor">
+  <header>
+    <h1>Pruebas del núcleo</h1>
+    <p>Casos portados de las pruebas unitarias de la app Android, para verificar que la web calcula igual.</p>
+  </header>
+  <div id="resumen">Ejecutando…</div>
+  <div id="salida"></div>
+</div>
+
+<script type="module">
+import {
+  partesCR, fechaCR, horaCR, inicioDiaCR, sumarDias, diasEntre,
+  fechasDelRango, esNumeroValido, esTimestampValido, puntoRocioMagnus
+} from "./js/modelo.js";
+import {
+  promediosPorHora, promediosDiarios, errorRango, extremosHistoricos,
+  escalaGrafico, escalasComparacion, resumenEstadistico, distribucion
+} from "./js/consultas.js";
+import {
+  interpretarLimites, filtrarLecturas, configuracionFiltroInicial,
+  comparacionValida, datosComparacion
+} from "./js/filtro.js";
+import { normalizarLecturas } from "./js/firebase.js";
+import {
+  documentoCsv, csvPorHora, csvPorDia, csvExtremos,
+  combinarCsvSeries, numeroCsv, nombreArchivo
+} from "./js/exportar.js";
+import { variablePorClave } from "./js/modelo.js";
+
+// --- Mini arnés de pruebas ---------------------------------------------------------
+
+const salida = document.getElementById("salida");
+let grupoActual = null;
+let total = 0;
+let fallos = 0;
+
+function grupo(nombre) {
+  grupoActual = document.createElement("section");
+  grupoActual.className = "grupo";
+  grupoActual.innerHTML = `<h2>${nombre}</h2>`;
+  salida.appendChild(grupoActual);
+}
+
+function prueba(nombre, cuerpo) {
+  total++;
+  const fila = document.createElement("div");
+  fila.className = "caso";
+  try {
+    cuerpo();
+    fila.classList.add("ok");
+    fila.innerHTML = `<span class="marca">✓</span><span>${nombre}</span>`;
+  } catch (error) {
+    fallos++;
+    fila.classList.add("fallo");
+    fila.innerHTML =
+      `<span class="marca">✗</span><span>${nombre}<span class="detalle">${error.message}</span></span>`;
+  }
+  grupoActual.appendChild(fila);
+}
+
+const fallar = (mensaje) => { throw new Error(mensaje); };
+const igual = (obtenido, esperado, nota = "") => {
+  if (obtenido !== esperado) fallar(`${nota} esperado ${esperado}, obtenido ${obtenido}`);
+};
+const cerca = (obtenido, esperado, nota = "", delta = 0.0001) => {
+  if (!(Math.abs(obtenido - esperado) <= delta)) {
+    fallar(`${nota} esperado ≈${esperado}, obtenido ${obtenido}`);
+  }
+};
+const esNulo = (valor, nota = "") => {
+  if (valor !== null) fallar(`${nota} esperaba null, obtuvo ${JSON.stringify(valor)}`);
+};
+const noNulo = (valor, nota = "") => {
+  if (valor === null || valor === undefined) fallar(`${nota} esperaba un valor, obtuvo ${valor}`);
+};
+const cierto = (condicion, nota = "") => { if (!condicion) fallar(nota || "condición falsa"); };
+const listaIgual = (obtenido, esperado, nota = "") => {
+  const a = JSON.stringify(obtenido);
+  const b = JSON.stringify(esperado);
+  if (a !== b) fallar(`${nota} esperado ${b}, obtenido ${a}`);
+};
+
+/** Timestamp de una fecha y hora de Costa Rica, como hacen las pruebas de Kotlin. */
+const ts = (fechaISO, hora = 0, minuto = 0) =>
+  new Date(`${fechaISO}T${String(hora).padStart(2, "0")}:${String(minuto).padStart(2, "0")}:00-06:00`).getTime();
+
+const DIA = "2026-10-10";
+
+// --- modelo.js ---------------------------------------------------------------------
+
+grupo("Fechas en Costa Rica (modelo.js)");
+
+prueba("agrupa en la fecha local aunque el navegador esté en otra zona", () => {
+  // 2026-10-11 03:00 UTC son todavía las 21:00 del 10 de octubre en Costa Rica.
+  igual(fechaCR(Date.UTC(2026, 9, 11, 3, 0, 0)), "2026-10-10", "fecha:");
+  igual(horaCR(Date.UTC(2026, 9, 11, 3, 0, 0)), 21, "hora:");
+});
+
+prueba("la medianoche local no se confunde con la medianoche UTC", () => {
+  igual(inicioDiaCR("2026-10-10"), Date.UTC(2026, 9, 10, 6, 0, 0), "inicio del día:");
+  cierto(inicioDiaCR("2026-10-10") !== Date.parse("2026-10-10"), "no debe coincidir con UTC");
+});
+
+prueba("la última hora del día pertenece a ese día", () => {
+  igual(fechaCR(ts(DIA, 23, 59)), DIA, "23:59 →");
+  igual(horaCR(ts(DIA, 23, 59)), 23, "hora →");
+  igual(fechaCR(ts(DIA, 0, 0)), DIA, "00:00 →");
+  igual(horaCR(ts(DIA, 0, 0)), 0, "hora →");
+});
+
+prueba("suma de días cruzando mes y año", () => {
+  igual(sumarDias("2026-09-30", 1), "2026-10-01", "fin de mes:");
+  igual(sumarDias("2026-12-31", 1), "2027-01-01", "fin de año:");
+  igual(sumarDias("2026-10-01", -1), "2026-09-30", "hacia atrás:");
+  igual(diasEntre("2026-09-30", "2026-10-02"), 2, "distancia:");
+  igual(diasEntre("2026-10-02", "2026-09-30"), -2, "distancia invertida:");
+});
+
+prueba("el rango incluye ambos extremos", () => {
+  listaIgual(fechasDelRango("2026-09-30", "2026-10-02"),
+    ["2026-09-30", "2026-10-01", "2026-10-02"], "rango:");
+  listaIgual(fechasDelRango(DIA, DIA), [DIA], "un solo día:");
+});
+
+prueba("validación numérica: el cero es válido, NaN e infinito no", () => {
+  cierto(esNumeroValido(0), "el cero debe ser válido");
+  cierto(esNumeroValido(-5.5), "los negativos deben ser válidos");
+  cierto(!esNumeroValido(NaN), "NaN no es válido");
+  cierto(!esNumeroValido(Infinity), "infinito no es válido");
+  cierto(!esNumeroValido(null), "null no es válido");
+  cierto(!esNumeroValido("24"), "el texto no es válido");
+  cierto(esTimestampValido(1791955286633), "timestamp real");
+  cierto(!esTimestampValido(-1), "timestamp negativo");
+  cierto(!esTimestampValido(1.5), "timestamp con decimales");
+});
+
+prueba("Magnus coincide con el firmware del ESP32", () => {
+  // El dispositivo envía 24.0 °C y 40.0 % con un rocío de 9.6 °C.
+  cerca(puntoRocioMagnus(24.0, 40.0), 9.6, "rocío:", 0.05);
+  cierto(Number.isNaN(puntoRocioMagnus(24, 0)), "humedad cero está fuera del dominio");
+  cierto(Number.isNaN(puntoRocioMagnus(24, 101)), "humedad > 100 está fuera del dominio");
+});
+
+// --- Promedios por hora -------------------------------------------------------------
+
+grupo("Promedios por hora (PromediosPorHoraTest.kt)");
+
+const regHora = (hora, minuto, valor) => ({ ts: ts(DIA, hora, minuto), valores: { temperatura: valor } });
+
+prueba("agrupa por hora y cuenta lecturas", () => {
+  const resultado = promediosPorHora(
+    [regHora(8, 0, 20.0), regHora(8, 30, 24.0), regHora(9, 0, 30.0)], DIA, "temperatura");
+  listaIgual(resultado.map((r) => r.hora), [8, 9], "horas:");
+  cerca(resultado[0].promedio, 22.0, "promedio de las 8:");
+  igual(resultado[0].cantidad, 2, "cantidad:");
+});
+
+prueba("respeta la medianoche local y excluye el otro día", () => {
+  const siguienteDia = { ts: ts("2026-10-11", 0, 0), valores: { temperatura: 99.0 } };
+  const resultado = promediosPorHora(
+    [regHora(0, 0, 20.0), regHora(23, 59, 24.0), siguienteDia], DIA, "temperatura");
+  listaIgual(resultado.map((r) => r.hora), [0, 23], "horas:");
+});
+
+prueba("ignora ausentes y no finitos sin inventar horas", () => {
+  const datos = [regHora(8, 0, NaN), regHora(9, 0, 0.0)];
+  igual(promediosPorHora(datos, DIA, "humedad").length, 0, "humedad sin lecturas:");
+  const resultado = promediosPorHora(datos, DIA, "temperatura");
+  igual(resultado.length, 1, "cantidad de horas:");
+  igual(resultado[0].hora, 9, "hora:");
+  cerca(resultado[0].promedio, 0.0, "el cero se conserva:");
+});
+
+// --- Promedios diarios ---------------------------------------------------------------
+
+grupo("Promedios diarios (PromediosDiariosTest.kt)");
+
+const regDia = (fecha, hora, valores) => ({ ts: ts(fecha, hora, 0), valores });
+
+prueba("promedia lecturas sin promediar promedios horarios", () => {
+  const datos = [
+    regDia(DIA, 0, { temperatura: 10.0 }),
+    regDia(DIA, 0, { temperatura: 20.0 }),
+    regDia(DIA, 1, { temperatura: 30.0 })
+  ];
+  const resultado = promediosDiarios(datos, { inicio: DIA, fin: DIA }, "temperatura");
+  igual(resultado.length, 1, "días:");
+  // Promediar las tres lecturas da 20. Promediar los promedios horarios daría 22,5.
+  cerca(resultado[0].promedio, 20.0, "promedio:");
+  igual(resultado[0].cantidad, 3, "cantidad:");
+});
+
+prueba("incluye ambos extremos, respeta la zona y conserva días vacíos", () => {
+  const inicio = sumarDias(DIA, -2);
+  const datos = [
+    regDia(sumarDias(inicio, -1), 23, { temperatura: 99.0 }),
+    regDia(inicio, 0, { temperatura: 20.0 }),
+    regDia(DIA, 23, { temperatura: 24.0 }),
+    regDia(sumarDias(DIA, 1), 0, { temperatura: 99.0 })
+  ];
+  const resultado = promediosDiarios(datos, { inicio, fin: DIA }, "temperatura");
+  igual(resultado.length, 3, "días del rango:");
+  cerca(resultado[0].promedio, 20.0, "primer día:");
+  esNulo(resultado[1].promedio, "día intermedio:");
+  igual(resultado[1].cantidad, 0, "cantidad del día vacío:");
+  cerca(resultado[2].promedio, 24.0, "último día:");
+});
+
+prueba("calcula cada variable con sus lecturas válidas", () => {
+  const datos = [
+    regDia(DIA, 1, { temperatura: NaN, humedad: 40.0 }),
+    regDia(DIA, 2, { temperatura: 0.0, humedad: Infinity })
+  ];
+  const rango = { inicio: DIA, fin: DIA };
+  cerca(promediosDiarios(datos, rango, "temperatura")[0].promedio, 0.0, "temperatura:");
+  cerca(promediosDiarios(datos, rango, "humedad")[0].promedio, 40.0, "humedad:");
+  esNulo(promediosDiarios(datos, rango, "puntoRocio")[0].promedio, "punto de rocío:");
+});
+
+prueba("admite un día y rechaza rangos invertidos y futuros", () => {
+  esNulo(errorRango(DIA, DIA, DIA), "un solo día:");
+  noNulo(errorRango(DIA, sumarDias(DIA, -1), DIA), "rango invertido:");
+  noNulo(errorRango(DIA, sumarDias(DIA, 1), DIA), "fin futuro:");
+  noNulo(errorRango(sumarDias(DIA, 1), sumarDias(DIA, 1), DIA), "rango futuro:");
+});
+
+prueba("lista días sin datos al cruzar el mes", () => {
+  const resultado = promediosDiarios([], { inicio: "2026-09-30", fin: "2026-10-02" }, "humedad");
+  listaIgual(resultado.map((r) => r.fecha),
+    ["2026-09-30", "2026-10-01", "2026-10-02"], "fechas:");
+  cierto(resultado.every((r) => r.promedio === null && r.cantidad === 0), "todos vacíos");
+});
+
+// --- Extremos --------------------------------------------------------------------------
+
+grupo("Extremos históricos (ExtremosHistoricosTest.kt)");
+
+const regTs = (ts, valor) => ({ ts, valores: { temperatura: valor } });
+
+prueba("obtiene valores originales con sus fechas", () => {
+  const r = extremosHistoricos([regTs(100, 30.0), regTs(200, 10.0), regTs(300, 20.0)], "temperatura");
+  cerca(r.minimo.valor, 10.0, "mínimo:");
+  igual(r.minimo.ts, 200, "fecha del mínimo:");
+  cerca(r.maximo.valor, 30.0, "máximo:");
+  igual(r.maximo.ts, 100, "fecha del máximo:");
+  igual(r.cantidad, 3, "cantidad:");
+});
+
+prueba("los empates muestran la fecha más antigua sin depender del orden", () => {
+  const r = extremosHistoricos(
+    [regTs(400, 10.0), regTs(300, 30.0), regTs(100, 10.0), regTs(200, 30.0)], "temperatura");
+  igual(r.minimo.ts, 100, "fecha del mínimo:");
+  igual(r.maximo.ts, 200, "fecha del máximo:");
+  igual(r.minimo.repeticiones, 2, "repeticiones del mínimo:");
+  igual(r.maximo.repeticiones, 2, "repeticiones del máximo:");
+});
+
+prueba("acepta cero y negativos e ignora no finitos", () => {
+  const r = extremosHistoricos(
+    [regTs(1, -5.0), regTs(2, 0.0), regTs(3, NaN), regTs(4, Infinity)], "temperatura");
+  cerca(r.minimo.valor, -5.0, "mínimo:");
+  cerca(r.maximo.valor, 0.0, "máximo:");
+  igual(r.cantidad, 2, "cantidad:");
+});
+
+prueba("devuelve sin datos para variable ausente o historial vacío", () => {
+  esNulo(extremosHistoricos([], "temperatura"), "historial vacío:");
+  esNulo(extremosHistoricos([regTs(1, 24.0)], "humedad"), "variable ausente:");
+  esNulo(extremosHistoricos([regTs(1, NaN)], "temperatura"), "solo no finitos:");
+});
+
+prueba("una lectura única es mínimo y máximo", () => {
+  const r = extremosHistoricos([regTs(123, 9.6)], "temperatura");
+  listaIgual(r.minimo, r.maximo, "mínimo y máximo:");
+  igual(r.cantidad, 1, "cantidad:");
+  cerca(r.amplitud, 0, "amplitud:");
+});
+
+prueba("todas iguales cuentan repeticiones y conservan la primera fecha", () => {
+  const r = extremosHistoricos([regTs(20, 24.0), regTs(10, 24.0)], "temperatura");
+  listaIgual(r.minimo, r.maximo, "mínimo y máximo:");
+  igual(r.minimo.repeticiones, 2, "repeticiones:");
+  igual(r.minimo.ts, 10, "primera fecha:");
+});
+
+// --- Filtro ----------------------------------------------------------------------------
+
+grupo("Filtro de atípicos (FiltroAtipicosTest.kt)");
+
+const regFiltro = (valor) => ({ ts: ts(DIA, 2, 0), valores: { temperatura: valor, humedad: 40.0 } });
+
+prueba("apagado conserva los valores de prueba", () => {
+  const r = filtrarLecturas([regFiltro(-30.6), regFiltro(62.8)], "temperatura", null);
+  igual(r.utilizados, 2, "utilizados:");
+  igual(r.excluidos, 0, "excluidos:");
+  cierto(configuracionFiltroInicial().activo === false, "el filtro arranca apagado");
+});
+
+prueba("los límites inclusivos separan ausentes de atípicos", () => {
+  const registros = [
+    regFiltro(-10.0), regFiltro(50.0), regFiltro(50.01),
+    regFiltro(-10.01), regFiltro(NaN), { ts: 1, valores: {} }
+  ];
+  const r = filtrarLecturas(registros, "temperatura", { minimo: -10.0, maximo: 50.0 });
+  igual(r.utilizados, 2, "utilizados (los límites son inclusivos):");
+  igual(r.excluidos, 2, "excluidos:");
+  igual(r.sinValor, 2, "sin valor:");
+});
+
+prueba("un atípico de temperatura no excluye la humedad", () => {
+  const registros = [regFiltro(62.8)];
+  igual(filtrarLecturas(registros, "temperatura", { minimo: -10, maximo: 50 }).utilizados, 0, "temperatura:");
+  igual(filtrarLecturas(registros, "humedad", { minimo: 0, maximo: 100 }).utilizados, 1, "humedad:");
+});
+
+prueba("acepta coma decimal, negativos y límites iguales", () => {
+  listaIgual(interpretarLimites({ minimo: " -10,5 ", maximo: "50.5" }),
+    { minimo: -10.5, maximo: 50.5 }, "coma y espacios:");
+  listaIgual(interpretarLimites({ minimo: "0", maximo: "0" }),
+    { minimo: 0, maximo: 0 }, "límites iguales:");
+});
+
+prueba("rechaza límites vacíos, invertidos, no numéricos y no finitos", () => {
+  const casos = [
+    { minimo: "", maximo: "10" },
+    { minimo: "50", maximo: "10" },
+    { minimo: "abc", maximo: "10" },
+    { minimo: "NaN", maximo: "10" },
+    { minimo: "0", maximo: "Infinity" }
+  ];
+  for (const caso of casos) {
+    esNulo(interpretarLimites(caso), `${JSON.stringify(caso)}:`);
+  }
+});
+
+prueba("recalcula hora, día y extremos sobre el mismo conjunto", () => {
+  const originales = [regFiltro(20.0), regFiltro(30.0), regFiltro(99.0)];
+  const r = filtrarLecturas(originales, "temperatura", { minimo: -10, maximo: 50 });
+  cerca(promediosPorHora(r.registros, DIA, "temperatura")[0].promedio, 25.0, "por hora:");
+  cerca(promediosDiarios(r.registros, { inicio: DIA, fin: DIA }, "temperatura")[0].promedio, 25.0, "por día:");
+  cerca(extremosHistoricos(r.registros, "temperatura").maximo.valor, 30.0, "extremos:");
+  // El filtro no debe tocar los registros originales.
+  cerca(originales[2].valores.temperatura, 99.0, "registro original intacto:");
+});
+
+prueba("excluir todo da sin datos y no un promedio de cero", () => {
+  const r = filtrarLecturas([regFiltro(99.0)], "temperatura", { minimo: -10, maximo: 50 });
+  igual(promediosPorHora(r.registros, DIA, "temperatura").length, 0, "por hora:");
+  esNulo(promediosDiarios(r.registros, { inicio: DIA, fin: DIA }, "temperatura")[0].promedio, "por día:");
+  esNulo(extremosHistoricos(r.registros, "temperatura"), "extremos:");
+});
+
+prueba("unos límites mal escritos bloquean la comparación", () => {
+  const filtro = configuracionFiltroInicial();
+  cierto(comparacionValida(["temperatura"], filtro), "apagado con una variable");
+  cierto(!comparacionValida([], filtro), "sin variables no hay consulta");
+  const roto = { activo: true, limites: { ...filtro.limites, temperatura: { minimo: "", maximo: "50" } } };
+  cierto(!comparacionValida(["temperatura"], roto), "límite vacío");
+  cierto(comparacionValida(["humedad"], roto), "otra variable sigue siendo válida");
+});
+
+prueba("la comparación filtra cada variable por separado", () => {
+  const filtro = { activo: true, limites: configuracionFiltroInicial().limites };
+  const datos = datosComparacion([regFiltro(99.0)], ["temperatura", "humedad"], filtro);
+  igual(datos.temperatura.utilizados, 0, "temperatura excluida:");
+  igual(datos.humedad.utilizados, 1, "humedad conservada:");
+});
+
+// --- Escalas ---------------------------------------------------------------------------
+
+grupo("Escalas de gráfica (EscalaGraficoTest.kt)");
+
+prueba("una serie constante tiene margen y no divide entre cero", () => {
+  const e = escalaGrafico([41.4, 41.4]);
+  cierto(e.minimo < 41.4, "mínimo con margen");
+  cierto(e.maximo > 41.4, "máximo con margen");
+});
+
+prueba("admite negativos y contiene todos los valores", () => {
+  const e = escalaGrafico([-39.5, 20.3]);
+  cierto(e.minimo < -39.5, "mínimo:");
+  cierto(e.maximo > 20.3, "máximo:");
+});
+
+prueba("las barras positivas y negativas incluyen la línea del cero", () => {
+  const positivo = escalaGrafico([20.0, 30.0], true);
+  const negativo = escalaGrafico([-30.0, -20.0], true);
+  cierto(positivo.minimo < 0 && positivo.maximo > 30, "positivas:");
+  cierto(negativo.minimo < -30 && negativo.maximo > 0, "negativas:");
+});
+
+prueba("el cero tiene una escala válida", () => {
+  listaIgual(escalaGrafico([0.0], true), { minimo: -1.0, maximo: 1.0 }, "escala del cero:");
+});
+
+prueba("temperatura y rocío comparten eje; la humedad usa el suyo", () => {
+  const series = [
+    { variable: { clave: "temperatura", unidad: "°C" }, puntos: [{ indice: 0, valor: 24 }] },
+    { variable: { clave: "puntoRocio", unidad: "°C" }, puntos: [{ indice: 0, valor: 9.6 }] },
+    { variable: { clave: "humedad", unidad: "%" }, puntos: [{ indice: 0, valor: 40 }] }
+  ];
+  const escalas = escalasComparacion(series);
+  igual(Object.keys(escalas).length, 2, "una escala por unidad:");
+  cierto(escalas["°C"].minimo < 9.6, "el eje en °C cubre el rocío");
+  cierto(escalas["°C"].maximo > 24, "el eje en °C cubre la temperatura");
+  cierto(escalas["%"].minimo < 40 && escalas["%"].maximo > 40, "el eje en % cubre la humedad");
+});
+
+prueba("una serie sin puntos no genera escala", () => {
+  const escalas = escalasComparacion([
+    { variable: { clave: "temperatura", unidad: "°C" }, puntos: [] },
+    { variable: { clave: "humedad", unidad: "%" }, puntos: [{ indice: 0, valor: 40 }] }
+  ]);
+  listaIgual(Object.keys(escalas), ["%"], "unidades con escala:");
+});
+
+// --- Normalización de Firebase -----------------------------------------------------------
+
+grupo("Lectura de Firebase (firebase.js)");
+
+prueba("convierte la respuesta REST y ordena por fecha", () => {
+  const { registros, descartados } = normalizarLecturas({
+    "-P3t91X": { temperatura: 24.0, humedad: 40.0, puntoRocio: 9.6, ts: 1791960295605 },
+    "-P3sqvd": { temperatura: 22.0, humedad: 90.0, puntoRocio: 20.3, ts: 1791955286633 }
+  });
+  igual(registros.length, 2, "registros:");
+  igual(descartados, 0, "descartados:");
+  // El objeto REST no garantiza orden cronológico: debe ordenarse por ts.
+  igual(registros[0].ts, 1791955286633, "primero el más antiguo:");
+  cerca(registros[0].valores.temperatura, 22.0, "temperatura:");
+});
+
+prueba("descarta registros sin fecha válida e informa cuántos", () => {
+  const { registros, descartados } = normalizarLecturas({
+    "a": { temperatura: 24.0, ts: 1791955286633 },
+    "b": { temperatura: 24.0, ts: "ayer" },
+    "c": { temperatura: 24.0 },
+    "d": null
+  });
+  igual(registros.length, 1, "registros válidos:");
+  igual(descartados, 3, "descartados:");
+});
+
+prueba("conserva el cero y omite los campos no numéricos", () => {
+  const { registros } = normalizarLecturas({
+    "a": { temperatura: 0.0, humedad: null, puntoRocio: "9.6", ts: 1791955286633 }
+  });
+  cerca(registros[0].valores.temperatura, 0.0, "el cero se conserva:");
+  cierto(!("humedad" in registros[0].valores), "null se omite");
+  cierto(!("puntoRocio" in registros[0].valores), "el texto se omite");
+});
+
+prueba("una base vacía no rompe la consulta", () => {
+  listaIgual(normalizarLecturas(null), { registros: [], descartados: 0 }, "respuesta nula:");
+});
+
+// --- Panel resumen y distribución --------------------------------------------------------
+
+grupo("Resumen estadístico del periodo");
+
+prueba("promedio, máximo y mínimo sobre las lecturas del periodo", () => {
+  const datos = [regTs(100, 20.0), regTs(200, 30.0), regTs(300, 25.0)];
+  const r = resumenEstadistico(datos, "temperatura");
+  cerca(r.promedio, 25.0, "promedio:");
+  cerca(r.maximo.valor, 30.0, "máximo:");
+  cerca(r.minimo.valor, 20.0, "mínimo:");
+  igual(r.maximo.ts, 200, "fecha del máximo:");
+  igual(r.cantidad, 3, "lecturas:");
+  cerca(r.amplitud, 10.0, "amplitud:");
+});
+
+prueba("el promedio del resumen usa las lecturas, no los extremos", () => {
+  // Con un valor repetido, promediar solo mínimo y máximo daría 20; el real es 15.
+  const datos = [regTs(1, 10.0), regTs(2, 10.0), regTs(3, 10.0), regTs(4, 30.0)];
+  cerca(resumenEstadistico(datos, "temperatura").promedio, 15.0, "promedio:");
+});
+
+prueba("ignora no finitos y devuelve null sin lecturas válidas", () => {
+  const datos = [regTs(1, NaN), regTs(2, 0.0), regTs(3, Infinity)];
+  const r = resumenEstadistico(datos, "temperatura");
+  cerca(r.promedio, 0.0, "el cero cuenta:");
+  igual(r.cantidad, 1, "una sola válida:");
+  esNulo(resumenEstadistico([regTs(1, NaN)], "temperatura"), "solo no finitos:");
+  esNulo(resumenEstadistico([], "temperatura"), "sin registros:");
+});
+
+grupo("Distribución (histograma de extremos)");
+
+prueba("reparte todas las lecturas sin perder ninguna", () => {
+  const datos = [10, 12, 14, 16, 18, 20].map((v, i) => regTs(i + 1, v));
+  const tramos = distribucion(datos, "temperatura", 3);
+  igual(tramos.length, 3, "tramos:");
+  igual(tramos.reduce((t, c) => t + c.cantidad, 0), 6, "total repartido:");
+});
+
+prueba("el máximo entra en el último tramo y no se sale", () => {
+  const datos = [0, 5, 10].map((v, i) => regTs(i + 1, v));
+  const tramos = distribucion(datos, "temperatura", 2);
+  cierto(tramos.at(-1).cantidad >= 1, "el máximo cae dentro");
+  cerca(tramos[0].desde, 0, "inicio del primer tramo:");
+  cerca(tramos.at(-1).hasta, 10, "fin del último tramo:");
+});
+
+prueba("una serie constante da un solo tramo", () => {
+  const datos = [24, 24, 24].map((v, i) => regTs(i + 1, v));
+  const tramos = distribucion(datos, "temperatura", 12);
+  igual(tramos.length, 1, "tramos:");
+  igual(tramos[0].cantidad, 3, "lecturas:");
+  cerca(tramos[0].desde, 24, "valor:");
+});
+
+prueba("sin lecturas válidas no hay distribución", () => {
+  listaIgual(distribucion([], "temperatura"), [], "sin registros:");
+  listaIgual(distribucion([regTs(1, NaN)], "temperatura"), [], "solo no finitos:");
+  listaIgual(distribucion([regTs(1, 24)], "humedad"), [], "variable ausente:");
+});
+
+// --- Exportación CSV ------------------------------------------------------------------------
+
+grupo("Exportación CSV (ExportacionCsvTest.kt)");
+
+const VARIABLE = variablePorClave("temperatura");
+const contiene = (texto, trozo, nota = "") => {
+  if (!texto.includes(trozo)) fallar(`${nota} no contiene ${JSON.stringify(trozo)}`);
+};
+const noContiene = (texto, trozo, nota = "") => {
+  if (texto.includes(trozo)) fallar(`${nota} no debería contener ${JSON.stringify(trozo)}`);
+};
+const filasDe = (csv) => csv.replace(/^﻿/, "").replace(/[\r\n]+$/, "").split("\r\n");
+
+prueba("escapa comillas, separadores y saltos de línea", () => {
+  const csv = documentoCsv([["texto;con;separador", 'dice "hola"', "dos\nlineas"]]);
+  igual(csv, '﻿"texto;con;separador";"dice ""hola""";"dos\nlineas"\r\n', "documento:");
+});
+
+prueba("el horario incluye las 24 horas y no convierte huecos en cero", () => {
+  const csv = csvPorHora(DIA, VARIABLE, [{ hora: 2, promedio: 0.0, cantidad: 4 }]);
+  const filas = filasDe(csv);
+  igual(filas.length, 25, "encabezado más 24 horas:");
+  cierto(filas[1].endsWith(';"";"0";"Sin datos"'), "la hora 0 queda sin datos");
+  contiene(filas[3], '"02:00";"02:59"', "franja de las 2:");
+  // El promedio es cero y debe exportarse como 0,000, no como hueco.
+  cierto(filas[3].endsWith(';"0,000";"4";"Con datos"'), "el cero se exporta como valor");
+});
+
+prueba("exporta variable, unidades y horario sin depender del idioma del dispositivo", () => {
+  const csv = csvPorHora(DIA, VARIABLE, [{ hora: 23, promedio: -30.6, cantidad: 1 }]);
+  contiene(csv, '"America/Costa_Rica";"Temperatura";"°C";"-30,600"', "fila:");
+  contiene(csv, '"23:00";"23:59"', "última franja:");
+  noContiene(csv, "Humedad", "solo la variable exportada:");
+});
+
+prueba("el diario conserva todas las fechas del rango y los valores negativos", () => {
+  const csv = csvPorDia(VARIABLE, [
+    { fecha: DIA, promedio: -5.25, cantidad: 2 },
+    { fecha: sumarDias(DIA, 1), promedio: null, cantidad: 0 }
+  ]);
+  contiene(csv, '"2026-10-10"', "primera fecha:");
+  contiene(csv, '"-5,250";"2";"Con datos"', "valor negativo:");
+  contiene(csv, '"2026-10-11"', "segunda fecha:");
+  contiene(csv, '"";"0";"Sin datos"', "día vacío:");
+});
+
+prueba("los extremos mantienen fecha local, timestamp, conteo y repeticiones", () => {
+  const marca = ts(DIA, 2, 30);
+  const csv = csvExtremos(VARIABLE, {
+    minimo: { valor: -5.0, ts: marca, repeticiones: 2 },
+    maximo: { valor: 24.0, ts: marca + 60000, repeticiones: 1 },
+    cantidad: 4
+  });
+  contiene(csv, '"Mínimo";"Temperatura";"°C";"-5,000";"2026-10-10 02:30:00"', "fila del mínimo:");
+  contiene(csv, `"${marca}";"America/Costa_Rica";"2";"4"`, "timestamp y conteos:");
+  contiene(csv, '"Máximo"', "fila del máximo:");
+});
+
+prueba("el CSV indica los límites y exporta el promedio ya filtrado", () => {
+  const limites = { minimo: -10.0, maximo: 50.0 };
+  const datos = filtrarLecturas([regFiltro(20.0), regFiltro(99.0)], "temperatura", limites).registros;
+  const csv = csvPorHora(DIA, VARIABLE, promediosPorHora(datos, DIA, "temperatura"), limites);
+  contiene(csv, '"filtro";"limite_inferior";"limite_superior"', "encabezado del filtro:");
+  contiene(csv, '"20,000";"1";"Con datos";"Límites configurados";"-10,000";"50,000"', "fila filtrada:");
+  noContiene(csv, "99,000", "el valor excluido:");
+});
+
+prueba("la procedencia de Open-Meteo se añade a cada fila", () => {
+  const origen = {
+    fuente: "Open-Meteo · datos modelados", ubicacion: "Santa Clara, San Carlos, Costa Rica",
+    latitud: 10.36, longitud: -84.51,
+    proveedor: "https://open-meteo.com/", licencia: "https://creativecommons.org/licenses/by/4.0/"
+  };
+  const csv = csvPorDia(VARIABLE, [{ fecha: DIA, promedio: 24.0, cantidad: 24 }], null, origen);
+  contiene(csv, '"fuente";"ubicacion";"latitud_solicitada"', "encabezado de procedencia:");
+  contiene(csv, '"10,360";"-84,510"', "coordenadas solicitadas:");
+  contiene(csv, '"Resumen calculado por Consulta Ambiental"', "tratamiento:");
+});
+
+prueba("varias series se combinan bajo un solo encabezado", () => {
+  const uno = csvPorDia(VARIABLE, [{ fecha: DIA, promedio: 24.0, cantidad: 2 }]);
+  const otro = csvPorDia(variablePorClave("humedad"), [{ fecha: DIA, promedio: 90.0, cantidad: 2 }]);
+  const combinado = combinarCsvSeries([uno, otro]);
+  const filas = filasDe(combinado);
+  igual(filas.length, 3, "un encabezado y dos filas:");
+  contiene(filas[1], '"Temperatura"', "primera serie:");
+  contiene(filas[2], '"Humedad"', "segunda serie:");
+  cierto(combinado.startsWith("﻿"), "conserva el BOM");
+  cierto(combinado.endsWith("\r\n"), "termina en CRLF");
+});
+
+prueba("combinar documentos con encabezados distintos falla en vez de mezclarlos", () => {
+  const porDia = csvPorDia(VARIABLE, [{ fecha: DIA, promedio: 24.0, cantidad: 2 }]);
+  const porHora = csvPorHora(DIA, VARIABLE, [{ hora: 2, promedio: 24.0, cantidad: 2 }]);
+  let fallo = false;
+  try { combinarCsvSeries([porDia, porHora]); } catch { fallo = true; }
+  cierto(fallo, "debería rechazar encabezados distintos");
+});
+
+prueba("los números siempre llevan tres decimales y coma", () => {
+  igual(numeroCsv(0), "0,000", "cero:");
+  igual(numeroCsv(-30.6), "-30,600", "negativo:");
+  igual(numeroCsv(41.4), "41,400", "con decimal:");
+});
+
+prueba("el nombre del archivo no arrastra acentos ni espacios", () => {
+  igual(nombreArchivo(["Promedios por día", "San José", "2026-10-10"], "csv"),
+    "promedios-por-dia-san-jose-2026-10-10.csv", "nombre:");
+});
+
+// --- Resumen ------------------------------------------------------------------------------
+
+const resumen = document.getElementById("resumen");
+resumen.textContent = fallos === 0
+  ? `✓ ${total} pruebas, todas correctas.`
+  : `✗ ${fallos} de ${total} pruebas fallaron.`;
+resumen.style.color = fallos === 0 ? "var(--bien)" : "var(--mal)";
+</script>
+</body>
+</html>
