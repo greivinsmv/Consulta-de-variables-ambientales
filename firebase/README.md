@@ -1,112 +1,114 @@
-# Acceso de lectura y dispositivo autorizado
+# Database access and device authentication
 
-La aplicación Android y la web consultan `lecturas/equipo01` sin iniciar sesión. El ESP32 es el único escritor autorizado mediante una cuenta de Firebase Authentication. La API key del cliente identifica el proyecto; no concede este permiso.
+**English** | [Español](README.es.md)
 
-## Qué cambian las reglas
+The Android app and web client read `lecturas/equipo01` without signing in. The ESP32 is the only authorized writer, through a dedicated Firebase Authentication account. The client API key identifies the project; it does not grant write access.
 
-`database.rules.template.json` deniega el acceso en la raíz y permite lectura pública únicamente en `lecturas/equipo01`. El UID elegido puede crear registros nuevos en esa ruta, pero no modificar o borrar los existentes ni escribir en otros equipos.
+## Access rules
 
-Cada lectura debe incluir temperatura, humedad, punto de rocío y fecha del servidor. No admite campos adicionales, texto en lugar de números ni humedad fuera de `(0, 100]`. Temperatura y rocío conservan los valores de prueba del proyecto, sin imponer los límites opcionales de la interfaz.
+`database.rules.template.json` denies access at the root and allows public reads only under `lecturas/equipo01`. The selected UID can create records in that path, but cannot modify or delete existing records or write to other teams' paths.
 
-La validación de `ts` requiere la fecha de la petición en el servidor. El firmware debe enviar `{".sv":"timestamp"}`; no utiliza el reloj del dispositivo para fechar la lectura.
+Each reading must contain temperature, humidity, dew point and a server timestamp. The rules reject extra fields, text in place of numbers and humidity outside `(0, 100]`. Temperature and dew point remain compatible with the project's test values; the optional interface filters do not constrain database writes.
 
-La cuenta autorizada no tiene permisos de administrador. Las herramientas de administración de Firebase siguen pudiendo gestionar la base de datos mediante IAM; nunca se deben copiar sus claves al ESP32.
+The `ts` validation requires the server time of the request. The firmware must send `{".sv":"timestamp"}` instead of using its own clock to timestamp the reading.
 
-## 1. Crear la cuenta del dispositivo
+The authorized account is not an administrator. Firebase administration tools can still manage the database through IAM; their credentials must never be copied to the ESP32.
 
-En la consola del proyecto `proyecto-iot-fa353`:
+## 1. Create the device account
 
-1. Abre **Authentication → Sign-in method** y habilita **Correo/Contraseña**.
-2. En **Users → Add user**, crea una cuenta exclusiva del ESP32. Utiliza una contraseña larga, única y guardada en tu gestor de contraseñas. No uses la de tu cuenta de Google.
-3. Copia el **UID** de ese usuario. El UID no es secreto; la contraseña y los tokens sí lo son.
+In the Firebase console for `proyecto-iot-fa353`:
 
-Habilitar el proveedor no da permiso de escritura a todas sus cuentas: las reglas comprueban el UID exacto del dispositivo.
+1. Open **Authentication → Sign-in method** and enable **Email/Password**.
+2. Under **Users → Add user**, create a dedicated ESP32 account. Use a long, unique password stored in a password manager, separate from your Google account password.
+3. Copy the user's **UID**. The UID is an identifier, not a secret; the password and tokens are secrets.
 
-## 2. Generar las reglas
+Enabling the provider does not grant write access to every account. The rules check the exact device UID.
 
-Desde la carpeta `firebase`, con Node.js 22 o superior:
+## 2. Generate the rules
+
+From `firebase`, with Node.js 22 or later:
 
 ```powershell
 node generar-reglas.mjs UID_DEL_USUARIO_WOKWI
 ```
 
-Sustituye `UID_DEL_USUARIO_WOKWI` por el UID de la cuenta del dispositivo en tu proyecto. El archivo generado es `database.rules.local.json`, excluido de Git. No reemplaces el UID por una API key, correo o contraseña. El script rechaza identificadores vacíos y la marca de la plantilla.
+Replace `UID_DEL_USUARIO_WOKWI` with the device account's UID. The generated `database.rules.local.json` is excluded from Git. Supply the UID rather than an API key, email or password. The script rejects empty identifiers and the template marker.
 
-Revisa el archivo y reserva su publicación hasta haber preparado el firmware autenticado. En **Realtime Database → Rules**, pega el archivo completo en lugar de las reglas anteriores. No conserves un permiso `.write` público en la raíz: anularía la restricción por dispositivo.
+Review the generated file and prepare the authenticated firmware before deploying it. Under **Realtime Database → Rules**, replace the previous rules with the full generated file. A public root `.write` permission would override the device restriction and must be removed.
 
-Si ya utilizas Firebase CLI, también puedes publicar desde esta carpeta después de iniciar sesión:
+If you use the Firebase CLI, you can also deploy from this directory after signing in:
 
 ```powershell
 npx firebase-tools login
 npx firebase-tools deploy --only database --project proyecto-iot-fa353
 ```
 
-Este comando modifica los permisos de la base real. La generación del JSON, los tests y el merge de esta rama no publican reglas por sí solos.
+The deploy command changes permissions on the real database. Generating JSON, running tests or merging code does not deploy rules.
 
-## 3. Obtener un token para Wokwi web
+## 3. Get a token for Wokwi web
 
-Un proyecto Wokwi que se abre mediante un enlace no es un almacén privado de secretos. Por eso no se guarda allí ni la contraseña ni un token permanente. El firmware solicita un ID token al iniciar; se introduce en el monitor serial y se conserva solo en memoria durante esa ejecución.
+A Wokwi project accessible through a link is not a private secret store. Keep passwords and permanent tokens out of it. The firmware requests an ID token at startup; paste it into the serial monitor. It stays in memory for that run.
 
-Desde la raíz del repositorio en PowerShell:
+From the repository root in PowerShell:
 
 ```powershell
 .\firebase\Obtener-TokenWokwi.ps1 -Correo 'CORREO_DE_LA_CUENTA_ESP32'
 ```
 
-El script pide la contraseña con entrada oculta, inicia sesión por HTTPS, copia el ID token al portapapeles y muestra solamente el UID y la vigencia. No guarda la contraseña, el refresh token ni el ID token en archivos. No ejecutes la consola con transcripción o trazas HTTP activas.
+Replace `CORREO_DE_LA_CUENTA_ESP32` with the device account's email. The script prompts for the password without displaying it, signs in over HTTPS, copies the ID token to the clipboard and prints only the UID and token lifetime. It does not save the password, refresh token or ID token to files. Avoid console transcription and HTTP tracing while using it.
 
-El token dura aproximadamente una hora. Pégalo en el monitor serial cuando el firmware lo solicite y pulsa Enter. Después vacía el portapapeles:
+The token lasts approximately one hour. Paste it into the serial monitor when requested and press Enter. Then clear the clipboard:
 
 ```powershell
 Set-Clipboard -Value ""
 ```
 
-Si la simulación continúa cuando vence, genera otro token y pégalo cuando Firebase rechace el anterior. La cuenta y el UID se mantienen; no hace falta cambiar las reglas cada hora. Nunca compartas capturas del token, el portapapeles o archivos de tráfico de esa ejecución.
+If the simulation keeps running after expiry, generate another token and paste it when Firebase rejects the previous one. The account and UID stay the same; the rules do not need hourly changes. Keep tokens, clipboard contents and traffic captures out of screenshots and shared files.
 
-La API key se obtiene de `google-services.json`. Si tiene restricciones que impiden el inicio de sesión REST desde tu PC, revisa la configuración de la clave en Google Cloud y utiliza una clave de cliente compatible con Firebase Authentication. No uses una cuenta de servicio ni un secreto administrativo para resolver ese error.
+The script reads the client API key from `google-services.json`. If its restrictions prevent REST sign-in from your PC, review the key configuration in Google Cloud and use a client key compatible with Firebase Authentication. Do not substitute a service account or administrative secret.
 
-## 4. Firmware mantenido aparte
+## 4. Keep firmware separate
 
-El firmware y el circuito se mantienen fuera de este repositorio, según el alcance del componente móvil. Retirarlos de la versión actual no borra el historial de Git ni cierra el acceso a Firebase. Las reglas son las que bloquean los envíos antiguos sin autenticación.
+The firmware and circuit are maintained outside this repository. Removing files from the current version does not erase their Git history or revoke database access. Firebase rules block the old unauthenticated requests.
 
-La versión autenticada debe:
+Authenticated firmware must:
 
-- Recibir el ID token en tiempo de ejecución, sin incluirlo en el sketch o un archivo compartido.
-- Enviar el token por HTTPS a Firebase REST con `?auth=ID_TOKEN`.
-- Verificar el certificado del servidor y sincronizar el reloj antes del primer envío.
-- No imprimir la URL autenticada, tokens ni cuerpos de inicio de sesión.
-- Detener los envíos anónimos: un token rechazado requiere otro token o revisar la cuenta.
+- Receive the ID token at runtime, without embedding it in the sketch or a shared file.
+- Send the token over HTTPS to Firebase REST using `?auth=ID_TOKEN`.
+- Verify the server certificate and synchronize the clock before the first request.
+- Avoid logging authenticated URLs, tokens or sign-in request bodies.
+- Stop unauthenticated sends: a rejected token requires a new token or an account check.
 
-Los certificados raíz públicos pueden estar en el proyecto Wokwi. Son material de confianza para TLS, no claves privadas. Deben actualizarse si cambia la cadena de certificados del proveedor.
+Public root certificates can be included in the Wokwi project. They are TLS trust material rather than private keys, and need updating if the provider's certificate chain changes.
 
-## 5. Probar las reglas localmente
+## 5. Test the rules locally
 
-Requiere Node.js 22 o superior y Java 21 o superior. Desde `firebase`:
+Install Node.js 22 or later and Java 21 or later. From `firebase`:
 
 ```powershell
 npm ci
 npm test
 ```
 
-La primera ejecución descarga el emulador oficial. Los tests utilizan `demo-consulta-ambiental`, sin tocar el proyecto real ni necesitar una contraseña. Se prueban lectura de la app, consulta por fecha, escrituras anónimas, otra cuenta, creación autorizada, edición, borrado, otras rutas y validación de los datos.
+The first run downloads the official emulator. Tests use `demo-consulta-ambiental` without touching the real project or requiring a password. They cover app reads, date queries, anonymous writes, another account, authorized creation, edits, deletion, other paths and data validation.
 
-`firebase.test.json` usa la plantilla para el emulador. `firebase.json` apunta al archivo generado para el despliegue; los tests no sobrescriben el UID configurado.
+`firebase.test.json` uses the template for the emulator. `firebase.json` points to the generated file for deployment; tests do not overwrite the configured UID.
 
-## Comprobación antes de cerrar la escritura anterior
+## Switching from the old write permissions
 
-1. Preparar la cuenta, el token y el firmware autenticado.
-2. Comprobar en Wokwi que sincroniza el reloj y devuelve HTTP 200 con el token.
-3. Publicar las reglas nuevas y repetir el envío autorizado.
-4. Ejecutar una copia del firmware anterior sin token: debe recibir permiso denegado.
-5. Verificar que el ESP32 no modifica ni borra lecturas anteriores.
-6. Abrir la app y comprobar Inicio, consultas y CSV sin iniciar sesión.
+1. Prepare the account, token and authenticated firmware.
+2. Check that Wokwi synchronizes its clock and receives HTTP 200 with the token.
+3. Deploy the new rules and repeat the authorized request.
+4. Try the old firmware without a token; Firebase must deny permission.
+5. Verify that the ESP32 cannot modify or delete earlier readings.
+6. Open the app and check Home, queries and CSV export without signing in.
 
-Si una contraseña o token se comparte por error, cambia la contraseña de la cuenta del dispositivo y revoca sus sesiones en Firebase Authentication. No basta con borrar el texto de Git o de Wokwi. Retirar temporalmente el permiso del UID en las reglas bloquea de inmediato sus escrituras.
+If a password or token is shared accidentally, change the device account's password and revoke its sessions in Firebase Authentication. Removing text from Git or Wokwi does not revoke access. Temporarily removing the UID's write permission in the rules blocks its writes immediately.
 
-## Verificación realizada
+## Completed checks
 
-El 14 de octubre de 2026 se comprobó el envío desde Wokwi con un ID token de la cuenta del ESP32: devolvió HTTP 200 y creó una lectura en Realtime Database. Tras publicar las reglas con su UID, una petición POST sin token desde PowerShell fue rechazada con `Permission denied`.
+On October 14, 2026, Wokwi sent a reading using the ESP32 account's ID token, received HTTP 200 and created a Realtime Database record. After the UID-based rules were deployed, an anonymous PowerShell POST returned `Permission denied`.
 
-Estas pruebas confirman el envío autenticado y el bloqueo de escritura anónima en el proyecto real. El 21 de octubre se verificó la plantilla con el emulador oficial y peticiones REST locales: creación por el UID permitido, rechazo anónimo y de otra cuenta, edición, borrado y validación de campos y fechas. El runner original del SDK no terminó en este entorno. Ese mismo día se comprobaron desde la PC las lecturas permitidas y bloqueadas de la base real, y se repitieron el envío autorizado de Wokwi y el rechazo de un POST anónimo. La edición, el borrado y los demás casos se comprobaron solo en el emulador; consulta [el alcance de la revisión](../SEGURIDAD.md).
+On October 21, the rules template was checked with the official emulator and local REST requests: authorized creation, anonymous and other-account rejection, edits, deletion, field validation and timestamps. The original SDK runner did not complete in that environment. The same day, read access to the real database was checked from the PC, and the authorized Wokwi request and rejected anonymous POST were repeated. Edits, deletion and the remaining cases were checked only in the emulator. See the [review scope (Spanish)](../SEGURIDAD.md).
 
-El lector serial del firmware mantenido aparte se ajustó para tokens largos: configura un búfer de 8192 bytes antes de iniciar el puerto y vacía los bytes disponibles sin una demora por carácter. No imprime el token; informa su recepción y el resultado HTTP.
+The serial reader in the separately maintained firmware handles long tokens by configuring an 8192-byte buffer before starting the port and draining available bytes without a per-character delay. It reports token receipt and the HTTP result without printing the token.
