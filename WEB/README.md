@@ -52,7 +52,7 @@ y las exportaciones hasta corregir sus límites.
 ## Pruebas
 
 Con el servidor abierto, `http://localhost:8000/pruebas.html` ejecuta las 58 pruebas
-del núcleo. Para automatizar esas comprobaciones y las 16 regresiones de interfaz:
+del núcleo. Para automatizar esas comprobaciones y las 17 regresiones de interfaz:
 
 ```sh
 python -m pip install -r WEB/tests/requirements.txt
@@ -76,3 +76,5 @@ La web consulta únicamente `lecturas/equipo01`, sin leer la raíz de la base. L
 permiten la lectura pública de esa ruta y reservan la creación de registros al UID del
 ESP32. No incluyas credenciales de escritura o administración en el frontend. Consulta
 [la guía de acceso](../firebase/README.md) para preparar las reglas del proyecto.
+
+La URL de Firebase es configuración pública, no una credencial. El alcance y las limitaciones de la revisión están en [SEGURIDAD.md](../SEGURIDAD.md).

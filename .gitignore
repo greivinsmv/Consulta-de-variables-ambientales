@@ -18,8 +18,13 @@
 
 # Firmware y credenciales del dispositivo se mantienen fuera del repositorio
 APP-MOVIL/wokwi/
+APP MOVIL/wokwi/
 **/secrets.h
 **/credenciales.local.*
 **/*service-account*.json
 **/*.pcap
 **/*.pcapng
+
+# Caché local de los scripts Python
+__pycache__/
+*.py[cod]

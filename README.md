@@ -64,6 +64,7 @@ WEB/               Cliente web, servidor de desarrollo y pruebas
 - [Comportamiento de las consultas y comprobaciones](APP-MOVIL/android/CONSULTAS.md)
 - [Configuración y pruebas del cliente web](WEB/README.md)
 - [Acceso de lectura y autenticación del ESP32](firebase/README.md)
+- [Seguridad, configuración pública y alcance de la revisión](SEGURIDAD.md)
 
 ## Ejecutar el proyecto
 
@@ -101,6 +102,6 @@ Los gráficos y CSV comparten los mismos cálculos que los resultados en pantall
 
 ## Estado y alcance
 
-La aplicación Android y el cliente web están implementados. Ambos consultan lecturas simuladas del ESP32, pronósticos y datos históricos de Open-Meteo. Las pruebas verifican los cálculos, filtros, exportaciones y casos de error por separado de la apariencia. La web cuenta con 58 comprobaciones del núcleo y 16 regresiones de interfaz automatizadas en Chromium; las gráficas y los informes también se han comprobado con las bibliotecas reales.
+La aplicación Android y el cliente web están implementados. Ambos consultan lecturas simuladas del ESP32, pronósticos y datos históricos de Open-Meteo. Las pruebas verifican los cálculos, filtros, exportaciones y casos de error por separado de la apariencia. La web cuenta con 58 comprobaciones del núcleo y 17 regresiones de interfaz automatizadas en Chromium; las gráficas y los informes también se han comprobado con las bibliotecas reales.
 
 La configuración de conexión pertenece a un entorno de demostración. Esta rama incluye reglas y pruebas para limitar la escritura al dispositivo; deben configurarse con su UID y publicarse en Firebase para surtir efecto. La configuración de cliente Firebase y las coordenadas de Open-Meteo son públicas. Las contraseñas, tokens y claves administrativas quedan fuera del repositorio.
