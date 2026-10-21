@@ -30,7 +30,7 @@ Desde la carpeta `firebase`, con Node.js 22 o superior:
 node generar-reglas.mjs UID_DEL_USUARIO_WOKWI
 ```
 
-El comando utiliza el UID configurado para el dispositivo de este proyecto. Para otro proyecto, sustitúyelo por el UID de su cuenta. El archivo generado es `database.rules.local.json`, excluido de Git. No reemplaces el UID por una API key, correo o contraseña. El script rechaza identificadores vacíos y la marca de la plantilla.
+Sustituye `UID_DEL_USUARIO_WOKWI` por el UID de la cuenta del dispositivo en tu proyecto. El archivo generado es `database.rules.local.json`, excluido de Git. No reemplaces el UID por una API key, correo o contraseña. El script rechaza identificadores vacíos y la marca de la plantilla.
 
 Revisa el archivo y reserva su publicación hasta haber preparado el firmware autenticado. En **Realtime Database → Rules**, pega el archivo completo en lugar de las reglas anteriores. No conserves un permiso `.write` público en la raíz: anularía la restricción por dispositivo.
 
@@ -107,6 +107,6 @@ Si una contraseña o token se comparte por error, cambia la contraseña de la cu
 
 El 14 de octubre de 2026 se comprobó el envío desde Wokwi con un ID token de la cuenta del ESP32: devolvió HTTP 200 y creó una lectura en Realtime Database. Tras publicar las reglas con su UID, una petición POST sin token desde PowerShell fue rechazada con `Permission denied`.
 
-Estas pruebas confirman el envío autenticado y el bloqueo de escritura anónima en el proyecto real. La batería de tests del emulador sigue pendiente: el entorno de desarrollo bloqueó la descarga del emulador desde Google Storage. No se ha comprobado todavía en ejecución cada caso de edición, borrado, otra cuenta y validación de campos.
+Estas pruebas confirman el envío autenticado y el bloqueo de escritura anónima en el proyecto real. El 21 de octubre se verificó la plantilla con el emulador oficial y peticiones REST locales: creación por el UID permitido, rechazo anónimo y de otra cuenta, edición, borrado y validación de campos y fechas. El runner original del SDK no terminó en este entorno. Estos resultados no verifican las reglas desplegadas en producción; consulta [el alcance de la revisión](../SEGURIDAD.md).
 
 El lector serial del firmware mantenido aparte se ajustó para tokens largos: configura un búfer de 8192 bytes antes de iniciar el puerto y vacía los bytes disponibles sin una demora por carácter. No imprime el token; informa su recepción y el resultado HTTP.

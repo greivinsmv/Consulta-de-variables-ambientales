@@ -119,6 +119,32 @@ class InterfazTest(unittest.TestCase):
         self.page.locator("[data-consultar]").click()
         expect(self.page.locator("[data-periodo]")).to_be_visible()
 
+    def test_firebase_solo_lee_la_ruta_publica_sin_credenciales(self):
+        peticiones = []
+
+        def registrar(peticion):
+            if urlparse(peticion.url).hostname.endswith("firebaseio.com"):
+                peticiones.append(peticion)
+
+        self.page.on("request", registrar)
+        self.abrir()
+        for pantalla in ["hora", "dia"]:
+            self.page.locator(f'[data-ir="{pantalla}"]').click()
+            self.page.locator("[data-consultar]").click()
+            expect(self.page.locator("[data-periodo]")).to_be_visible()
+        self.page.locator('[data-ir="historico"]').click()
+        expect(self.page.locator("#contenido")).to_contain_text("Máximos y mínimos")
+        self.page.locator("[data-consultar]").click()
+        self.page.wait_for_load_state("networkidle")
+        self.assertGreater(len(peticiones), 0)
+        for peticion in peticiones:
+            url = urlparse(peticion.url)
+            self.assertEqual(peticion.method, "GET")
+            self.assertEqual(url.path, "/lecturas/equipo01.json")
+            self.assertNotIn("auth", parse_qs(url.query))
+            self.assertNotIn("authorization", peticion.headers)
+            self.assertIsNone(peticion.post_data)
+
     def test_pruebas_del_nucleo(self):
         self.page.goto(self.base + "/pruebas.html")
         expect(self.page.locator("#resumen")).to_contain_text("58")
