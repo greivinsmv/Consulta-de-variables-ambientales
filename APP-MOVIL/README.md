@@ -1,87 +1,91 @@
-# Aplicación Android · Consulta Ambiental
+# Consulta Ambiental · Android
 
-Cliente de consulta ambiental desarrollado en Kotlin y Jetpack Compose. Recibe lecturas de Firebase Realtime Database y descarga datos meteorológicos de Open-Meteo para varias zonas de Costa Rica. Ofrece análisis por hora, por día y de extremos históricos, junto con filtros configurables y exportación CSV.
+**English** | [Español](README.es.md)
 
-## Pantallas
+An environmental data client built with Kotlin and Jetpack Compose. It reads Firebase Realtime Database records and downloads Open-Meteo weather data for locations in Costa Rica, with hourly, daily and historical extreme-value analysis, configurable filters and CSV export.
 
-| Pantalla | Función |
+## Screens
+
+The interface uses Spanish labels:
+
+| Screen | Purpose |
 | --- | --- |
-| Inicio | Lectura del ESP32 o clima actual, pronóstico horario y de diez días de la zona elegida |
-| Por hora | Promedios de un día, comparación de variables y selector de hora |
-| Por día | Comparación de promedios diarios y detalle de una fecha seleccionada |
-| Extremos | Mínimos, máximos, fechas y repeticiones de todo el historial |
+| Inicio (Home) | Latest ESP32 reading or current weather, hourly forecast and ten-day forecast for the selected location |
+| Por hora (Hourly) | Daily hourly averages, variable comparison and an hour selector |
+| Por día (Daily) | Daily average comparison and details for a selected date |
+| Extremos (Extremes) | Minimum and maximum readings, timestamps and repeated occurrences across the available history |
 
-Por hora y Por día permiten seleccionar una o varias variables en la misma gráfica. Extremos mantiene su selector individual. Las tres consultas incluyen filtro por límites y exportación CSV. El tema claro u oscuro se conserva entre sesiones.
+Hourly and daily queries can plot one or more variables together. Extremes uses a single-variable selector. All three support limit-based filtering and CSV export. Light/dark theme preferences are saved between sessions.
 
-## Requisitos
+## Requirements
 
-- Android Studio compatible con Android Gradle Plugin **9.4.1**.
-- Android SDK Platform **37** y SDK Build Tools **36.0.0**.
-- JDK **25** para el daemon de Gradle, según `gradle/gradle-daemon-jvm.properties`.
-- Emulador o dispositivo con Android **8.0 (API 26)** o superior.
-- Acceso a internet y un proyecto Firebase Realtime Database con permisos de lectura.
+- Android Studio compatible with Android Gradle Plugin **9.4.1**.
+- Android SDK Platform **37** and SDK Build Tools **36.0.0**.
+- JDK **25** for the Gradle daemon, as specified in `gradle/gradle-daemon-jvm.properties`.
+- An emulator or device running Android **8.0 (API 26)** or later.
+- Internet access and a Firebase Realtime Database project with read access configured.
 
-El repositorio incluye el wrapper de Gradle **9.6.0**; utiliza el wrapper para compilar y ejecutar pruebas.
+The repository includes the Gradle **9.6.0** wrapper. Use it for builds and tests.
 
-## Configuración
+## Setup
 
-### 1. Abrir el proyecto
+### 1. Open the project
 
-Clona el repositorio y abre la carpeta `APP-MOVIL/android` desde **File > Open** en Android Studio. Esta carpeta contiene `settings.gradle.kts` y el módulo `app`.
+Clone the repository and open `APP-MOVIL/android` with **File > Open** in Android Studio. This directory contains `settings.gradle.kts` and the `app` module.
 
-Instala los componentes del SDK desde **SDK Manager** y espera a que termine la sincronización de Gradle. Android Studio genera `local.properties` con la ruta del SDK de la máquina.
+Install the required SDK components in **SDK Manager** and wait for Gradle sync to finish. Android Studio generates `local.properties` with your machine's SDK path.
 
-### 2. Configurar Firebase
+### 2. Configure Firebase
 
-El identificador de la aplicación es:
+The Android application ID is:
 
 ```text
 com.ic3101.consultaambiental
 ```
 
-El repositorio incluye `app/google-services.json` para el proyecto de demostración. Si utilizas un proyecto propio:
+The repository includes `app/google-services.json` for the demonstration project. To use your own project:
 
-1. Registra una aplicación Android con el identificador anterior en Firebase.
-2. Descarga su `google-services.json` y colócalo en `APP-MOVIL/android/app/`.
-3. Configura la URL de Realtime Database en `MainActivity.kt`, `ConsultaPorHora.kt`, `ConsultaPorDia.kt` y `ConsultaHistorica.kt`.
-4. Conserva la ruta `lecturas/equipo01` o adapta las referencias de lectura al esquema elegido.
-5. Sigue la [guía de acceso](../firebase/README.md) para permitir lectura de esa ruta y reservar la escritura al dispositivo. Las reglas incluyen el índice `.indexOn: ["ts"]` necesario para las consultas por fecha.
+1. Register an Android app in Firebase with the application ID above.
+2. Download its `google-services.json` and place it in `APP-MOVIL/android/app/`.
+3. Update the Realtime Database URL in `MainActivity.kt`, `ConsultaPorHora.kt`, `ConsultaPorDia.kt` and `ConsultaHistorica.kt`.
+4. Keep the `lecturas/equipo01` path, or adjust the read references to match your schema.
+5. Follow the [access guide](../firebase/README.md) to allow reads of that path and restrict writes to the device. The rules include the `.indexOn: ["ts"]` index required by date queries.
 
-El proyecto de demostración utiliza `proyecto-iot-fa353`. La aplicación solo consulta datos; el ESP32 es el componente que envía las lecturas. Las reglas de Firebase determinan quién puede leer y escribir.
+The demonstration project is `proyecto-iot-fa353`. The app only reads data; the ESP32 sends the readings. Firebase rules determine who can read and write.
 
-### 3. Ejecutar
+### 3. Run the app
 
-Selecciona el módulo **app**, elige el emulador o dispositivo y pulsa **Run**. Con Firebase configurado, la fuente **ESP32** muestra el último registro disponible y escucha las nuevas lecturas.
+Select the **app** module, choose an emulator or device and press **Run**. With Firebase configured, the **ESP32** source shows the latest available record and listens for new readings.
 
-### 4. Consultar el clima por zona
+### 4. Choose a weather location
 
-Selecciona **Clima de Costa Rica** en **Fuente de datos** y pulsa **Cambiar** para buscar un lugar o provincia. Las ubicaciones están definidas en `ZonasClimaticas.kt`; no se solicita permiso de ubicación. Santa Clara sigue disponible con sus coordenadas originales (**10.36, −84.51**).
+Select **Clima de Costa Rica** under **Fuente de datos**, then press **Cambiar** to search for a place or province. Locations are defined in `ZonasClimaticas.kt`; the app does not request location permission. Santa Clara uses its original approximate coordinates, **10.36, −84.51**.
 
-Inicio solicita condiciones actuales, las próximas 24 horas y diez días, incluido hoy. Los datos se actualizan cada **15 minutos** mientras Inicio está visible; cambiar de pantalla, abrir Información o enviar la app al fondo pausa la programación. **Actualizar clima** permite una consulta manual. Se reutiliza el pronóstico recibido para cada zona durante la sesión. Si falla una petición, se conserva el último resultado de esa zona y se muestra un aviso.
+Home requests current conditions, the next 24 hours and ten days including today. Data refreshes every **15 minutes** while Home is visible. Switching screens, opening Information or putting the app in the background pauses scheduled refreshes. **Actualizar clima** starts a manual request. Forecasts are cached per location during the session. If a request fails, the last result for that location remains visible with a notice.
 
-El endpoint `https://api.open-meteo.com/v1/forecast` recibe las coordenadas, `timeformat=unixtime`, `timezone=America/Costa_Rica` y `forecast_days=10`. Se solicitan temperatura, humedad, rocío, códigos WMO, indicador de día/noche y probabilidad de precipitación. Los mínimos y máximos diarios pertenecen al pronóstico; no son los extremos de los registros de Firebase.
+The `https://api.open-meteo.com/v1/forecast` endpoint receives coordinates, `timeformat=unixtime`, `timezone=America/Costa_Rica` and `forecast_days=10`. Requests include temperature, humidity, dew point, WMO codes, day/night status and precipitation probability. Daily minimums and maximums belong to the forecast, rather than the extremes of Firebase records.
 
-Para las consultas académicas, pulsa **Cargar historial**:
+For historical analysis, select **Cargar historial**:
 
-- Periodo: diez días completos anteriores; hoy queda excluido.
-- Variables: temperatura, humedad relativa y punto de rocío, con **240 registros horarios** por respuesta completa.
-- La copia de cada zona se guarda atómicamente en `clima_<id_zona>.json`, dentro del almacenamiento privado de la app. El archivo anterior de Santa Clara conserva el mismo nombre.
-- El historial guardado funciona sin conexión. **Actualizar historial** reemplaza solo la copia de esa zona; un fallo conserva la descarga anterior.
-- Cambiar de zona reinicia la consulta visible y utiliza únicamente su historial. La elección de zona se conserva entre sesiones.
+- The period covers the previous ten complete days, excluding today.
+- A complete response contains **240 hourly records** for temperature, relative humidity and dew point.
+- Each location's copy is saved atomically as `clima_<id_zona>.json` in private app storage. The earlier Santa Clara file keeps its existing name.
+- Saved history can be analyzed offline. **Actualizar historial** replaces only that location's copy; a failed download preserves the previous one.
+- Changing location resets the visible query and uses only that location's history. The selection is saved between sessions.
 
-El pronóstico se conserva en memoria y se consulta de nuevo en una sesión posterior. No se mezcla con los diez días históricos ni se escribe en Firebase. Los valores son datos modelados para coordenadas aproximadas; la celda del modelo puede estar próxima al lugar solicitado. La API pública no requiere una clave para el uso académico no comercial.
+Forecasts stay in memory and are fetched again in a later session. They are kept separate from the ten historical days and are never written to Firebase. Weather values are model estimates for approximate coordinates; the model's grid cell may be near the requested location. The public API does not require a key for noncommercial academic use.
 
-Datos: [Open-Meteo](https://open-meteo.com/) · [Licencia CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Los CSV identifican la zona, coordenadas, proveedor y licencia.
+Data: [Open-Meteo](https://open-meteo.com/) · [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Weather CSV files identify the location, coordinates, provider and license.
 
-## Información y ayuda
+## Information and help
 
-El botón **ⓘ** de la cabecera abre el apartado **Información** desde cualquier pantalla. Reúne las fuentes, la ubicación, la frecuencia de actualización, los detalles de la descarga, los criterios de cálculo, el filtro, la exportación y los créditos de Open-Meteo con enlace a la licencia CC BY 4.0.
+The **ⓘ** button in the header opens **Información** from any screen. It collects data sources, location, refresh intervals, download details, calculation rules, filters, exports and Open-Meteo attribution with a link to CC BY 4.0.
 
-La vista se abre sobre la consulta actual: **Volver** o el botón Atrás de Android permiten cerrar Información conservando las fechas, las variables, el filtro y los resultados. Las explicaciones generales se concentran allí; las pantallas principales presentan controles, resultados y avisos de error o datos antiguos. El panel para cargar o actualizar el historial está en Inicio y aparece también en las consultas cuando falta una descarga.
+The panel opens over the current query. **Volver** or Android's Back button closes it while preserving dates, variables, filters and results. Main screens focus on controls, results and notices about errors or stale data. The history download/update panel appears on Home and also in queries when no history has been downloaded.
 
-## Modelo de datos
+## Data model
 
-Cada registro se almacena con un identificador generado por Firebase en `lecturas/equipo01`:
+Each record has a Firebase-generated ID under `lecturas/equipo01`:
 
 ```text
 lecturas/
@@ -93,84 +97,84 @@ lecturas/
         └── ts
 ```
 
-| Campo | Tipo | Descripción |
+| Field | Type | Description |
 | --- | --- | --- |
-| `temperatura` | Número | Temperatura en °C |
-| `humedad` | Número | Humedad relativa en % |
-| `puntoRocio` | Número | Punto de rocío calculado en °C |
-| `ts` | Número | Fecha del servidor en milisegundos Unix |
+| `temperatura` | Number | Temperature in °C |
+| `humedad` | Number | Relative humidity in % |
+| `puntoRocio` | Number | Calculated dew point in °C |
+| `ts` | Number | Server timestamp in Unix milliseconds |
 
-Las fechas se muestran en `America/Costa_Rica`. Los promedios diarios se calculan directamente sobre las lecturas del día. Los valores ausentes o no finitos se omiten por variable y los periodos vacíos conservan el estado **Sin datos**.
+Dates use `America/Costa_Rica`. Daily averages are calculated directly from that day's readings. Missing or non-finite values are omitted independently for each variable; empty periods display **Sin datos** (no data).
 
-El filtro usa límites inclusivos y editables. Los límites iniciales son valores de demostración; el usuario puede ajustarlos para su conjunto de datos. Activarlo cambia los resultados calculados y sus exportaciones, conservando los registros originales en Firebase.
+Filters use editable inclusive limits. Initial limits are demonstration values that users can adapt to their dataset. Enabling the filter changes calculated results and exports while preserving the original Firebase records.
 
-## Exportación
+## Export
 
-**Exportar CSV** abre el selector de archivos de Android para elegir nombre y ubicación. No requiere permisos generales de almacenamiento.
+**Exportar CSV** opens Android's file picker to choose a filename and location. No broad storage permission is required.
 
-Los archivos usan UTF-8 con BOM, separador punto y coma y coma decimal con tres decimales. Incluyen fechas, unidades, zona horaria, cantidades de lecturas y estado de los periodos vacíos. Con el filtro activo se añaden sus límites. Los CSV meteorológicos agregan fuente, ubicación, coordenadas solicitadas, proveedor, licencia y tratamiento de los datos. Si una hoja de cálculo no reconoce las columnas, importa el archivo como CSV con separador `;`.
+Files use UTF-8 with a BOM, semicolons as delimiters and decimal commas with three decimal places. They include dates, units, time zone, reading counts and empty-period status. Active filter limits are included. Weather CSV files also add the source, location, requested coordinates, provider, license and data processing details. If a spreadsheet does not detect the columns, import the CSV with `;` as the delimiter.
 
-## Compilación y pruebas
+## Build and test
 
-Desde `APP-MOVIL/android`, en Windows:
+From `APP-MOVIL/android` on Windows:
 
 ```powershell
 .\gradlew.bat :app:assembleDebug :app:testDebugUnitTest
 ```
 
-En Linux o macOS:
+On Linux or macOS:
 
-```bash
+```sh
 bash gradlew :app:assembleDebug :app:testDebugUnitTest
 ```
 
-El APK de desarrollo se genera en:
+The debug APK is generated at:
 
 ```text
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Las pruebas unitarias verifican promedios, extremos, filtros independientes por variable, escalas compartidas por unidad, CSV con varias series y validación de fechas, unidades y arrays del pronóstico. Para comprobar la interfaz, recorre las cuatro pantallas, cambia de tema y contrasta los resultados exportados con las lecturas de Firebase.
+Unit tests cover averages, extremes, independent variable filters, shared scales by unit, CSV files with multiple series, and forecast date/unit/array validation. For interface checks, navigate through the four screens, change the theme and compare exported results against the Firebase readings.
 
-Consulta [CONSULTAS.md](android/CONSULTAS.md) para los criterios de cálculo y escenarios de comprobación.
+See [CONSULTAS.md (Spanish)](android/CONSULTAS.md) for calculation rules and verification scenarios.
 
-## Integración con el ESP32
+## ESP32 integration
 
-El firmware y el circuito de Wokwi se mantienen fuera del repositorio. El dispositivo simula un DHT22 en GPIO 15, calcula el punto de rocío mediante Magnus y envía una lectura por minuto a `lecturas/equipo01`.
+The Wokwi firmware and circuit are maintained outside this repository. The device simulates a DHT22 on GPIO 15, calculates dew point with the Magnus approximation and sends one reading per minute to `lecturas/equipo01`.
 
-La app no necesita credenciales de escritura. Para proteger la base, configura una cuenta de Firebase Authentication exclusiva del dispositivo, autoriza su UID en las reglas y proporciona un ID token temporal al iniciar Wokwi. La contraseña no se incorpora a la app ni a un proyecto Wokwi accesible mediante un enlace.
+The app does not need write credentials. Configure a dedicated Firebase Authentication account for the device, authorize its UID in the rules and provide a temporary ID token when Wokwi starts. Keep the password out of the app and any Wokwi project accessible through a shared link.
 
-El procedimiento, el script de PowerShell y las pruebas de reglas están en [firebase/README.md](../firebase/README.md). Publicar el código en GitHub no despliega las reglas ni habilita Authentication. La lectura pública queda limitada a la ruta del equipo; la cuenta del dispositivo solo crea lecturas nuevas.
+The procedure, PowerShell script and rule tests are described in [firebase/README.md](../firebase/README.md). Publishing code to GitHub does not deploy rules or enable Authentication. Public reads are limited to the team's path; the device account can only create new readings.
 
-## Organización del código
+## Code layout
 
-El código de la aplicación está en `android/app/src/main/java/com/ic3101/consultaambiental/`:
+Application source is under `android/app/src/main/java/com/ic3101/consultaambiental/`:
 
-| Archivos | Responsabilidad |
+| Files | Responsibility |
 | --- | --- |
-| `MainActivity.kt`, `InterfazAmbiental.kt` | Inicio, navegación y presentación de las lecturas |
-| `ConsultaPorHora.kt`, `ConsultaPorDia.kt`, `ConsultaHistorica.kt` | Consultas a Firebase y pantallas de resultados |
-| `PromediosDiarios.kt`, `ExtremosHistoricos.kt` | Cálculos de promedios diarios y extremos |
-| `GraficosAmbientales.kt`, `ComparacionVariables.kt` | Gráfica de varias series, escalas por unidad, selección y filtrado independiente |
-| `FiltroAtipicos.kt` | Validación de límites y filtrado por variable |
-| `ExportacionCsv.kt`, `BotonExportarCsv.kt` | Formato CSV y guardado mediante el selector de Android |
-| `ClimaSantaClara.kt` | Descarga y archivo privado del historial por zona |
-| `ClimaActual.kt`, `PronosticoClima.kt` | Validación del dato actual, petición y lectura del pronóstico |
-| `EstadoClima.kt` | Estado de peticiones y resultados por zona |
-| `ZonasClimaticas.kt` | Catálogo de lugares, coordenadas y procedencia |
-| `VistaPronostico.kt`, `SelectorFuenteDatos.kt` | Selector de zona, tarjetas, símbolos del clima y fuente |
-| `InformacionApp.kt` | Ayuda, fuentes, detalles de actualización y créditos |
-| `SelectorTema.kt`, `ui/theme/` | Selector de apariencia y paleta visual |
+| `MainActivity.kt`, `InterfazAmbiental.kt` | Home, navigation and reading display |
+| `ConsultaPorHora.kt`, `ConsultaPorDia.kt`, `ConsultaHistorica.kt` | Firebase queries and results screens |
+| `PromediosDiarios.kt`, `ExtremosHistoricos.kt` | Daily averages and extreme-value calculations |
+| `GraficosAmbientales.kt`, `ComparacionVariables.kt` | Multiple chart series, scales by unit, independent selection and filtering |
+| `FiltroAtipicos.kt` | Limit validation and filtering per variable |
+| `ExportacionCsv.kt`, `BotonExportarCsv.kt` | CSV formatting and saving through Android's file picker |
+| `ClimaSantaClara.kt` | Downloading and privately storing weather history per location |
+| `ClimaActual.kt`, `PronosticoClima.kt` | Current-condition validation, forecast requests and parsing |
+| `EstadoClima.kt` | Request state and results per location |
+| `ZonasClimaticas.kt` | Location catalog, coordinates and provenance |
+| `VistaPronostico.kt`, `SelectorFuenteDatos.kt` | Location selection, weather cards, icons and data source |
+| `InformacionApp.kt` | Help, sources, refresh details and attribution |
+| `SelectorTema.kt`, `ui/theme/` | Theme selection and colors |
 
-### Cambios habituales
+### Common changes
 
-- **Añadir una zona:** agrega una entrada a `zonasClimaticas` con un identificador único y coordenadas aproximadas. Mantén los identificadores existentes: forman parte de las preferencias y los archivos guardados.
-- **Cambiar la presentación del clima:** edita `VistaPronostico.kt`. `CabeceraPronostico` presenta el estado actual y `PronosticoPorDia` dibuja las filas de diez días. Los fondos e iconos son vectores locales.
-- **Cambiar las escalas o colores:** revisa `escalasComparacion` en `GraficosAmbientales.kt` y `colorVariable` en `ComparacionVariables.kt`. Las unidades deben permanecer explícitas al comparar °C y %.
-- **Solicitar otro campo a Open-Meteo:** actualiza la URL y el parser de `PronosticoClima.kt`, incluyendo la validación de su unidad y longitud. Añade un caso de prueba para datos ausentes.
+- **Add a location:** add a `zonasClimaticas` entry with a unique ID and approximate coordinates. Preserve existing IDs because preferences and saved files depend on them.
+- **Change the weather display:** edit `VistaPronostico.kt`. `CabeceraPronostico` presents current conditions; `PronosticoPorDia` draws the ten daily rows. Backgrounds and icons are local vectors.
+- **Change scales or colors:** review `escalasComparacion` in `GraficosAmbientales.kt` and `colorVariable` in `ComparacionVariables.kt`. Keep units explicit when comparing °C and %.
+- **Request another Open-Meteo field:** update the URL and parser in `PronosticoClima.kt`, including unit and array-length validation. Add a missing-data test case.
 
-Los archivos locales del SDK, las carpetas de compilación y las claves de firma se excluyen del control de versiones.
+Local SDK configuration, build directories and signing keys are excluded from version control.
 
-## Alcance actual
+## Current scope
 
-La app se ha probado con lecturas simuladas y con exportaciones por hora, por día y de extremos. El historial de diez días se obtiene de Open-Meteo. Las respuestas actuales e históricas de la API se han comprobado en vivo. Los nuevos pronósticos y la comparación de series requieren además recorrer la interfaz en un dispositivo. La comprobación de la interfaz meteorológica se realiza en el dispositivo Android. La consulta de extremos descarga todo el historial y está pensada para el volumen de datos del proyecto académico; conjuntos mayores requerirían una estrategia de agregación o paginación.
+The app has been checked with simulated readings and hourly, daily and extreme-value exports. The ten-day history comes from Open-Meteo; current and historical API responses have been checked live. Forecast presentation and series comparison also require an interface walkthrough on an Android device. The extremes query downloads the full history and targets the academic project's data volume; larger datasets would need aggregation or pagination.

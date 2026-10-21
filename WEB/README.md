@@ -1,58 +1,44 @@
 # Consulta Ambiental · Web
 
-Cliente web para consultar temperatura, humedad y punto de rocío. Comparte el esquema
-de datos y los criterios de cálculo de la aplicación Android. Está desarrollado con
-HTML, CSS y módulos de JavaScript, sin framework ni proceso de compilación.
+**English** | [Español](README.es.md)
 
-## Ejecutar en desarrollo
+A web client for temperature, humidity and dew point queries. It shares the Android app's data schema and calculation rules, using HTML, CSS and JavaScript modules without a framework or build step.
 
-Requiere Python 3. Desde la raíz del repositorio:
+## Run locally
+
+Install Python 3, then run from the repository root:
 
 ```sh
 python WEB/servidor-dev.py
 ```
 
-Abre `http://localhost:8000`. Puedes indicar otro puerto, por ejemplo
-`python WEB/servidor-dev.py 8080`. El servidor evita la caché durante el desarrollo.
-No abras `index.html` directamente desde el disco: los módulos necesitan HTTP.
+Open `http://localhost:8000`. To use another port, run `python WEB/servidor-dev.py 8080`. The development server disables caching. Open the app over HTTP rather than opening `index.html` directly from disk, since JavaScript modules require it.
 
-La aplicación carga Chart.js, jsPDF y su complemento de tablas desde CDN. Las consultas
-a Firebase y Open-Meteo necesitan conexión. El historial meteorológico ya descargado se
-conserva en el navegador; esa copia no garantiza que la página completa abra sin red.
+Chart.js, jsPDF and its table plugin load from a CDN. Firebase and Open-Meteo requests need an internet connection. Downloaded weather history is cached in the browser; this cache alone does not make the entire site available offline.
 
-## Fuentes y consultas
+## Data sources and queries
 
-- **ESP32:** lecturas del DHT22 simulado en Wokwi, almacenadas en
-  `lecturas/equipo01` de Firebase Realtime Database. La web solo realiza lecturas;
-  no necesita la cuenta ni el token de escritura del dispositivo.
-- **Open-Meteo:** condiciones actuales, pronóstico de diez días y consultas del historial
-  por zona de Costa Rica. Son estimaciones del modelo. El pronóstico se mantiene separado
-  del historial utilizado en los análisis.
-- **Por hora y por día:** comparación de una o varias variables, estadísticas del periodo,
-  filtros independientes por variable y exportación a CSV o PDF.
-- **Extremos:** mínimo, máximo y distribución de las lecturas del historial disponible.
-  La interfaz indica qué periodo se analiza.
+- **ESP32:** readings from a DHT22 simulated in Wokwi, stored under `lecturas/equipo01` in Firebase Realtime Database. The web client only reads data and does not need the device account or its write token.
+- **Open-Meteo:** current conditions, a ten-day forecast and historical weather queries for locations in Costa Rica. Values are model estimates. Forecasts remain separate from the history used for analysis.
+- **Por hora / Por día:** hourly and daily comparisons of one or more variables, period statistics, independent filters and CSV/PDF exports.
+- **Extremos:** minimum, maximum and distribution of the available readings. The interface identifies the period being analyzed.
 
-Las fechas se interpretan en `America/Costa_Rica`. Un periodo sin lecturas conserva su
-hueco: no se rellena con cero ni se interpola. Los filtros solo afectan a los cálculos,
-nunca modifican los datos almacenados. Un filtro activo inválido bloquea los resultados
-y las exportaciones hasta corregir sus límites.
+Dates use `America/Costa_Rica`. Missing periods remain gaps: values are neither interpolated nor replaced with zero. Filters affect calculations only and never modify stored data. An invalid active filter blocks results and exports until its limits are corrected.
 
-## Organización del código
+## Code layout
 
-| Archivo o carpeta | Responsabilidad |
+| File or directory | Responsibility |
 | --- | --- |
-| `js/app.js` | Estado general, navegación, fuentes y actualización del pronóstico |
-| `js/firebase.js`, `js/openmeteo.js` | Acceso a datos y normalización de respuestas |
-| `js/modelo.js`, `js/consultas.js`, `js/filtro.js` | Fechas, cálculos y filtros |
-| `js/graficos.js`, `js/exportar.js` | Gráficas y archivos CSV/PDF |
-| `js/ui/` | Pantallas, controles y eventos de la interfaz |
-| `css/` | Tema claro/oscuro y distribución adaptable |
+| `js/app.js` | Application state, navigation, data sources and forecast refresh |
+| `js/firebase.js`, `js/openmeteo.js` | Data access and response normalization |
+| `js/modelo.js`, `js/consultas.js`, `js/filtro.js` | Dates, calculations and filters |
+| `js/graficos.js`, `js/exportar.js` | Charts and CSV/PDF files |
+| `js/ui/` | Screens, controls and interface events |
+| `css/` | Light/dark theme and responsive layout |
 
-## Pruebas
+## Tests
 
-Con el servidor abierto, `http://localhost:8000/pruebas.html` ejecuta las 58 pruebas
-del núcleo. Para automatizar esas comprobaciones y las 17 regresiones de interfaz:
+With the server running, open `http://localhost:8000/pruebas.html` for the 58 core checks. To automate them and the 17 interface regressions:
 
 ```sh
 python -m pip install -r WEB/tests/requirements.txt
@@ -60,21 +46,14 @@ python -m playwright install chromium
 python -m unittest discover -s WEB/tests -v
 ```
 
-El runner inicia su propio servidor, usa respuestas controladas y no accede a la base de
-producción. Los detalles están en [tests/README.md](tests/README.md).
+The runner starts its own server, uses mocked responses and does not access the production database. See [tests/README.md](tests/README.md).
 
-El seguimiento de las correcciones de la revisión está en la
-[issue #4](https://github.com/greivinsmv/Consulta-de-variables-ambientales/issues/4)
-y en [REVISION_PR_3.md](REVISION_PR_3.md).
+The earlier web fixes are tracked in [issue #4](https://github.com/greivinsmv/Consulta-de-variables-ambientales/issues/4) and [REVISION_PR_3.md (Spanish)](REVISION_PR_3.md).
 
-Consulta también la [descripción general](../README.md) y la
-[documentación de Android](../APP-MOVIL/README.md).
+See also the [project overview](../README.md) and [Android guide](../APP-MOVIL/README.md).
 
-## Acceso a los datos
+## Database access
 
-La web consulta únicamente `lecturas/equipo01`, sin leer la raíz de la base. Las reglas
-permiten la lectura pública de esa ruta y reservan la creación de registros al UID del
-ESP32. No incluyas credenciales de escritura o administración en el frontend. Consulta
-[la guía de acceso](../firebase/README.md) para preparar las reglas del proyecto.
+The web client queries only `lecturas/equipo01`, without reading the database root. The rules allow public reads of that path and restrict record creation to the ESP32 account's UID. Write and administrative credentials must stay out of the frontend. Follow the [access guide](../firebase/README.md) to prepare the project's rules.
 
-La URL de Firebase es configuración pública, no una credencial. El alcance y las limitaciones de la revisión están en [SEGURIDAD.md](../SEGURIDAD.md).
+The Firebase URL is public configuration, not a credential. The review's scope and limitations are documented in [SEGURIDAD.md (Spanish)](../SEGURIDAD.md).
