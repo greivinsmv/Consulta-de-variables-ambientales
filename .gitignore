@@ -24,3 +24,7 @@ APP MOVIL/wokwi/
 **/*service-account*.json
 **/*.pcap
 **/*.pcapng
+
+# Caché local de los scripts Python
+__pycache__/
+*.py[cod]

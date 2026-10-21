@@ -43,6 +43,14 @@ El runner original del SDK no terminó en este entorno; las comprobaciones de re
 
 El proxy del entorno rechazó las conexiones al dominio de Firebase con `Tunnel connection failed: 403 Forbidden`. Ese rechazo no procede de Firebase y no demuestra que la base esté protegida ni abierta. No se modificaron reglas, usuarios ni datos de producción durante esta revisión.
 
+Desde una conexión con acceso a Firebase, ejecuta desde la raíz del repositorio:
+
+```sh
+python firebase/comprobar-acceso-publico.py
+```
+
+El script solo realiza GET, limita la consulta pública a una lectura y no muestra valores ni necesita credenciales. Sale con código distinto de cero si falla una comprobación o la conexión. Un resultado correcto revisa esas rutas concretas, no los permisos de escritura ni el resto del contenido histórico.
+
 Desde la consola de Firebase hay que comprobar que las reglas publicadas coinciden con el archivo generado para el UID correcto. Desde una conexión con acceso al servicio, la raíz y otras rutas deben devolver permiso denegado, y solo las mediciones previstas deben poder leerse sin iniciar sesión. Las pruebas autenticadas deben usar la cuenta del dispositivo, manteniendo su contraseña y token fuera de capturas y archivos compartidos.
 
 ## Después de limpiar el historial
