@@ -39,11 +39,18 @@ La revisión automatizada no garantiza que cualquier formato de secreto pueda de
 
 El runner original del SDK no terminó en este entorno; las comprobaciones de reglas anteriores se realizaron por REST contra el emulador local, no con una cuenta real.
 
-### Verificación de producción pendiente
+### Comprobación en Firebase
 
-El proxy del entorno rechazó las conexiones al dominio de Firebase con `Tunnel connection failed: 403 Forbidden`. Ese rechazo no procede de Firebase y no demuestra que la base esté protegida ni abierta. No se modificaron reglas, usuarios ni datos de producción durante esta revisión.
+El 21 de octubre de 2026 se comprobó desde la PC el acceso a la base real:
 
-Desde una conexión con acceso a Firebase, ejecuta desde la raíz del repositorio:
+- Firebase rechazó la lectura anónima de la raíz, `lecturas/equipo02` y `privado`.
+- La consulta de la última lectura de `lecturas/equipo01` estuvo permitida.
+- Wokwi envió una lectura con el token de la cuenta del ESP32: respondió HTTP 200 y apareció el registro nuevo.
+- El envío de una lectura sin token desde PowerShell fue rechazado con `Permission denied`.
+
+También se revisaron las reglas publicadas. La edición, el borrado, otra cuenta y los datos inválidos se comprobaron en el emulador; no se probaron esas operaciones sobre los registros reales.
+
+Para repetir la comprobación de lectura, ejecuta desde la raíz del repositorio:
 
 ```sh
 python firebase/comprobar-acceso-publico.py
