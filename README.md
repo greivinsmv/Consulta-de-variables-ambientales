@@ -65,8 +65,7 @@ WEB/               Web client, development server and tests
 - [Android setup and usage](APP-MOVIL/README.md)
 - [Query calculations and verification scenarios (Spanish)](APP-MOVIL/android/CONSULTAS.md)
 - [Web setup and tests](WEB/README.md)
-- [Database access and ESP32 authentication](firebase/README.md)
-- [Security review and public configuration (Spanish)](SEGURIDAD.md)
+- [Firebase setup](firebase/README.md)
 
 ## Getting started
 
@@ -85,7 +84,7 @@ python WEB/servidor-dev.py
 
 Open `http://localhost:8000`. The [web guide](WEB/README.md) covers network dependencies and tests.
 
-The Wokwi simulation is maintained separately. The device uses a dedicated Firebase Authentication account; the clients receive its readings without write credentials. Follow the [access guide](firebase/README.md) to configure and deploy the rules.
+Weather data from Open-Meteo works without Firebase. To enable ESP32 readings, configure your own Firebase project using the [setup guide](firebase/README.md) and the client guides above. Local Firebase configuration files are excluded from Git. The Wokwi simulation is maintained separately.
 
 ## Weather and forecasts
 

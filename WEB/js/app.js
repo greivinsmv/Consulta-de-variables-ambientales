@@ -15,7 +15,7 @@ import {
   leerHistorialGuardado, origenDatos, rangoCubierto, periodoDisponible,
   INTERVALO_CONSULTA_CLIMA
 } from "./openmeteo.js";
-import { rangoDisponible } from "./firebase.js";
+import { rangoDisponible, firebaseConfigurado } from "./firebase.js";
 import { destruirGrafica } from "./graficos.js";
 import { icono } from "./ui/iconos.js";
 import { esc, aviso } from "./ui/componentes.js";
@@ -43,7 +43,7 @@ const prefiereOscuro = () =>
 
 export const estado = {
   pantalla: "actual",
-  fuente: preferencia("fuente", "esp32"),
+  fuente: firebaseConfigurado() ? preferencia("fuente", "esp32") : "clima",
   zonaId: preferencia("zona_clima", "santa_clara"),
   oscuro: preferencia("tema", null) === null ? prefiereOscuro() : preferencia("tema") === "oscuro",
   info: false,
@@ -87,6 +87,7 @@ export const fuenteDatos = () => estado.fuente === "clima"
  * Si falla, los selectores se quedan sin acotar: es una ayuda, no un requisito.
  */
 async function cargarPeriodoEsp32({ refrescar = false } = {}) {
+  if (!firebaseConfigurado()) return;
   if (estado.esp32.cargandoPeriodo || (estado.esp32.periodo && !refrescar)) return;
   // Un rango vacío también es una respuesta válida. No se vuelve a pedir en cada render.
   const ultimoIntento = estado.esp32.ultimoIntentoPeriodo;
@@ -397,6 +398,7 @@ function pintarContenido() {
 
   const datos = fuenteDatos();
   const enClima = estado.fuente === "clima";
+  const faltaFirebase = !enClima && !firebaseConfigurado();
 
   // Extremos analiza todo el historial de una vez, así que necesita una descarga previa.
   // Por hora y Por día no: descargan su propio periodo al consultar.
@@ -406,7 +408,12 @@ function pintarContenido() {
   const mostrarPanelHistorial = enClima && (estado.pantalla === "actual" || faltaHistorial);
 
   let pantalla = "";
-  if (estado.pantalla === "actual") {
+  if (faltaFirebase) {
+    pantalla = `<section class="tarjeta pila">
+      <h2 class="tarjeta__titulo">Conecta tu dispositivo</h2>
+      ${aviso("Configura una base de datos propia para consultar las lecturas del ESP32. Puedes seguir usando Clima de Costa Rica.")}
+    </section>`;
+  } else if (estado.pantalla === "actual") {
     pantalla = inicio.render(estado, zonaActual());
   } else if (faltaHistorial) {
     pantalla = aviso("Carga el historial de la zona para poder consultar sus extremos.");
@@ -431,7 +438,8 @@ function pintarContenido() {
   contenido.querySelector("[data-historial]")?.addEventListener("click", cargarHistorial);
 
   // Eventos propios de la pantalla.
-  if (estado.pantalla === "actual") inicio.conectar(contenido, estado, actualizarPronostico);
+  if (faltaFirebase) { /* La fuente ESP32 necesita configuración antes de consultar. */ }
+  else if (estado.pantalla === "actual") inicio.conectar(contenido, estado, actualizarPronostico);
   else if (faltaHistorial) { /* sin controles */ }
   else if (estado.pantalla === "hora" || estado.pantalla === "dia") {
     porPeriodo.conectar(contenido, estado.pantalla, datos, estado.oscuro, render);

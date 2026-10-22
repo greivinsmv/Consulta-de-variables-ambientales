@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.firebase.database.*
 import java.text.SimpleDateFormat
@@ -25,6 +26,12 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 internal fun UltimaLectura(modifier: Modifier = Modifier) {
+    val contexto = LocalContext.current
+    val referencia = remember(contexto) { FirebaseLecturas.referencia(contexto) }
+    if (referencia == null) {
+        Text("Esta copia no tiene una base de datos configurada.")
+        return
+    }
     var mensaje by remember { mutableStateOf("Cargando lecturas…") }
     var temperatura by remember { mutableStateOf<Double?>(null) }
     var humedad by remember { mutableStateOf<Double?>(null) }
@@ -32,9 +39,7 @@ internal fun UltimaLectura(modifier: Modifier = Modifier) {
     var fecha by remember { mutableStateOf<Long?>(null) }
 
     DisposableEffect(Unit) {
-        val consulta = FirebaseDatabase.getInstance(
-            "https://proyecto-iot-fa353-default-rtdb.firebaseio.com"
-        ).getReference("lecturas/equipo01").orderByKey().limitToLast(1)
+        val consulta = referencia.orderByKey().limitToLast(1)
 
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {

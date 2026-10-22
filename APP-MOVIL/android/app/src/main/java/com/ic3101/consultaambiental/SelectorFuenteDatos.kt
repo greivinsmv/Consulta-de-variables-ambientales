@@ -23,6 +23,17 @@ internal fun SelectorFuenteDatos(fuente: String, alElegir: (String) -> Unit) {
 }
 
 @Composable
+internal fun AvisoEsp32SinConfigurar(alVerClima: () -> Unit) {
+    Card(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("ESP32 no disponible", style = MaterialTheme.typography.titleMedium)
+            Text("Esta copia no tiene una base de datos configurada. Puedes consultar el clima de Costa Rica.")
+            TextButton(onClick = alVerClima) { Text("Ver clima") }
+        }
+    }
+}
+
+@Composable
 internal fun PanelClima(historial: HistorialClima?, cargando: Boolean, mensaje: String?, alDescargar: () -> Unit) {
     val fecha = DateTimeFormatter.ofPattern("dd/MM/yyyy")
     Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {

@@ -15,7 +15,8 @@ from playwright.sync_api import sync_playwright, expect
 
 
 WEB = Path(__file__).resolve().parents[1]
-FIREBASE = "https://proyecto-iot-fa353-default-rtdb.firebaseio.com/**"
+FIREBASE_URL = "https://demo-consulta-ambiental-default-rtdb.firebaseio.com"
+FIREBASE = FIREBASE_URL + "/**"
 CLIMA = "https://api.open-meteo.com/**"
 HOY, AYER, ANTES = "2026-10-19", "2026-10-18", "2026-10-17"
 CR = timezone(timedelta(hours=-6))
@@ -91,6 +92,10 @@ class InterfazTest(unittest.TestCase):
             body=CHART if "chart.umd" in ruta.request.url else "", content_type="application/javascript"))
         self.responder_firebase = self.firebase_normal
         self.responder_clima = lambda ruta: ruta.fulfill(json=PRONOSTICO)
+        self.responder_configuracion = lambda ruta: ruta.fulfill(json={
+            "firebase": {"databaseURL": FIREBASE_URL, "readingsPath": "lecturas/equipo01"}
+        })
+        self.page.route(self.base + "/config.local.json", lambda ruta: self.responder_configuracion(ruta))
         self.page.route(FIREBASE, lambda ruta: self.responder_firebase(ruta))
         self.page.route(CLIMA, lambda ruta: self.responder_clima(ruta))
 
@@ -144,6 +149,59 @@ class InterfazTest(unittest.TestCase):
             self.assertNotIn("auth", parse_qs(url.query))
             self.assertNotIn("authorization", peticion.headers)
             self.assertIsNone(peticion.post_data)
+
+    def test_sin_configuracion_usa_clima_y_no_consulta_firebase(self):
+        peticiones = []
+        self.page.on("request", lambda peticion: peticiones.append(peticion.url))
+        self.responder_configuracion = lambda ruta: ruta.fulfill(status=404, body="")
+        self.abrir("esp32")
+        expect(self.page.locator('[data-fuente="clima"]')).to_have_attribute("aria-checked", "true")
+        expect(self.page.locator(".clima-actual__temperatura")).to_have_text("25,0 °")
+
+        self.page.locator('[data-fuente="esp32"]').click()
+        for pantalla in ["actual", "hora", "dia", "historico"]:
+            self.page.locator(f'[data-ir="{pantalla}"]').click()
+            expect(self.page.locator("#contenido")).to_contain_text("Configura una base de datos propia")
+            expect(self.page.locator("[data-consultar]")).to_have_count(0)
+        self.page.clock.fast_forward(60000)
+        self.page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+        resultados = self.page.evaluate("""async () => {
+          const firebase = await import('./js/firebase.js');
+          return Promise.all([
+            firebase.leerUltimaLectura(), firebase.leerHistorialCompleto(),
+            firebase.leerRangoFechas('2026-10-18', '2026-10-19')
+          ].map(peticion => peticion.then(() => false, () => true)));
+        }""")
+        self.assertEqual(resultados, [True, True, True])
+        self.assertFalse(any("firebaseio.com" in url or "firebasedatabase.app" in url for url in peticiones))
+
+    def test_configuracion_propia_utiliza_su_url_y_ruta(self):
+        base = "https://otra-base.europe-west1.firebasedatabase.app"
+        ruta_lecturas = "/sensores/dispositivo.json"
+        peticiones = []
+        self.responder_configuracion = lambda ruta: ruta.fulfill(json={
+            "firebase": {"databaseURL": base, "readingsPath": "sensores/dispositivo"}
+        })
+
+        def responder(ruta):
+            peticiones.append(ruta.request.url)
+            self.firebase_normal(ruta)
+
+        self.page.route(base + "/**", responder)
+        self.abrir()
+        expect(self.page.locator(".medicion-principal__valor")).to_have_text("30,0 °C")
+        self.assertGreater(len(peticiones), 0)
+        self.assertTrue(all(urlparse(url).path == ruta_lecturas for url in peticiones))
+
+    def test_configuracion_invalida_no_hace_peticiones_a_otro_servidor(self):
+        peticiones = []
+        self.page.on("request", lambda peticion: peticiones.append(peticion.url))
+        self.responder_configuracion = lambda ruta: ruta.fulfill(json={
+            "firebase": {"databaseURL": "https://example.com", "readingsPath": "lecturas/equipo01"}
+        })
+        self.abrir()
+        expect(self.page.locator('[data-fuente="clima"]')).to_have_attribute("aria-checked", "true")
+        self.assertFalse(any(urlparse(url).hostname == "example.com" for url in peticiones))
 
     def test_pruebas_del_nucleo(self):
         self.page.goto(self.base + "/pruebas.html")

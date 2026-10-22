@@ -18,7 +18,7 @@ Chart.js, jsPDF and its table plugin load from a CDN. Firebase and Open-Meteo re
 
 ## Data sources and queries
 
-- **ESP32:** readings from a DHT22 simulated in Wokwi, stored under `lecturas/equipo01` in Firebase Realtime Database. The web client only reads data and does not need the device account or its write token.
+- **ESP32:** readings from a DHT22 simulated in Wokwi, using your own Firebase Realtime Database configuration.
 - **Open-Meteo:** current conditions, a ten-day forecast and historical weather queries for locations in Costa Rica. Values are model estimates. Forecasts remain separate from the history used for analysis.
 - **Por hora / Por día:** hourly and daily comparisons of one or more variables, period statistics, independent filters and CSV/PDF exports.
 - **Extremos:** minimum, maximum and distribution of the available readings. The interface identifies the period being analyzed.
@@ -38,7 +38,7 @@ Dates use `America/Costa_Rica`. Missing periods remain gaps: values are neither 
 
 ## Tests
 
-With the server running, open `http://localhost:8000/pruebas.html` for the 58 core checks. To automate them and the 17 interface regressions:
+With the server running, open `http://localhost:8000/pruebas.html` for the 58 core checks. To automate them and the 20 interface regressions:
 
 ```sh
 python -m pip install -r WEB/tests/requirements.txt
@@ -52,8 +52,17 @@ The earlier web fixes are tracked in [issue #4](https://github.com/greivinsmv/Co
 
 See also the [project overview](../README.md) and [Android guide](../APP-MOVIL/README.md).
 
-## Database access
+## Firebase setup (optional)
 
-The web client queries only `lecturas/equipo01`, without reading the database root. The rules allow public reads of that path and restrict record creation to the ESP32 account's UID. Write and administrative credentials must stay out of the frontend. Follow the [access guide](../firebase/README.md) to prepare the project's rules.
+Open-Meteo works without Firebase. To enable the ESP32 data source, copy `WEB/config.example.json` to `WEB/config.local.json` and enter your own database URL:
 
-The Firebase URL is public configuration, not a credential. The review's scope and limitations are documented in [SEGURIDAD.md (Spanish)](../SEGURIDAD.md).
+```json
+{
+  "firebase": {
+    "databaseURL": "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    "readingsPath": "lecturas/equipo01"
+  }
+}
+```
+
+The local file is excluded from Git. It contains client configuration; do not add passwords or tokens. See [Firebase setup](../firebase/README.md) to prepare your database. Without this file, the app opens the weather view and displays a setup notice if ESP32 is selected.

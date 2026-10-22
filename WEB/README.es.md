@@ -24,9 +24,8 @@ conserva en el navegador; esa copia no garantiza que la página completa abra si
 
 ## Fuentes y consultas
 
-- **ESP32:** lecturas del DHT22 simulado en Wokwi, almacenadas en
-  `lecturas/equipo01` de Firebase Realtime Database. La web solo realiza lecturas;
-  no necesita la cuenta ni el token de escritura del dispositivo.
+- **ESP32:** lecturas del DHT22 simulado en Wokwi, usando la configuración de tu
+  propia Firebase Realtime Database.
 - **Open-Meteo:** condiciones actuales, pronóstico de diez días y consultas del historial
   por zona de Costa Rica. Son estimaciones del modelo. El pronóstico se mantiene separado
   del historial utilizado en los análisis.
@@ -54,7 +53,7 @@ y las exportaciones hasta corregir sus límites.
 ## Pruebas
 
 Con el servidor abierto, `http://localhost:8000/pruebas.html` ejecuta las 58 pruebas
-del núcleo. Para automatizar esas comprobaciones y las 17 regresiones de interfaz:
+del núcleo. Para automatizar esas comprobaciones y las 20 regresiones de interfaz:
 
 ```sh
 python -m pip install -r WEB/tests/requirements.txt
@@ -72,11 +71,21 @@ y en [REVISION_PR_3.md](REVISION_PR_3.md).
 Consulta también la [descripción general](../README.es.md) y la
 [documentación de Android](../APP-MOVIL/README.es.md).
 
-## Acceso a los datos
+## Configuración de Firebase (opcional)
 
-La web consulta únicamente `lecturas/equipo01`, sin leer la raíz de la base. Las reglas
-permiten la lectura pública de esa ruta y reservan la creación de registros al UID del
-ESP32. No incluyas credenciales de escritura o administración en el frontend. Consulta
-[la guía de acceso](../firebase/README.es.md) para preparar las reglas del proyecto.
+Open-Meteo funciona sin Firebase. Para habilitar la fuente ESP32, copia
+`WEB/config.example.json` a `WEB/config.local.json` e indica la URL de tu propia base:
 
-La URL de Firebase es configuración pública, no una credencial. El alcance y las limitaciones de la revisión están en [SEGURIDAD.md](../SEGURIDAD.md).
+```json
+{
+  "firebase": {
+    "databaseURL": "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    "readingsPath": "lecturas/equipo01"
+  }
+}
+```
+
+El archivo local está excluido de Git. Contiene configuración del cliente; no añadas
+contraseñas ni tokens. La [guía de Firebase](../firebase/README.es.md) explica cómo
+preparar tu base. Sin ese archivo, la aplicación abre la vista del clima y muestra un
+aviso de configuración al seleccionar ESP32.
