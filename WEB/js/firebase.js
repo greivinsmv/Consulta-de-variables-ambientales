@@ -1,28 +1,45 @@
-/**
- * Lectura de las lecturas del ESP32 en Firebase Realtime Database.
- *
- * La web es un cliente de SOLO LECTURA. Nunca escribe, nunca pide credenciales y nunca
- * consulta la raíz de la base: las reglas del proyecto solo abren `lecturas/equipo01`, y
- * las reglas no funcionan como filtro (pedir "/" devuelve permiso denegado, no los hijos
- * permitidos). La escritura está reservada al UID del ESP32.
- *
- * Se usa la API REST, que no necesita clave: la lectura de esa ruta es pública. Cuando el
- * compañero entregue la configuración de app Web, se puede añadir el SDK para recibir
- * cambios en vivo; el resto de la aplicación no se entera porque consume estas funciones.
- */
+/** Consultas REST de las lecturas del ESP32 y normalización de sus respuestas. */
 
 import {
   esNumeroValido, esTimestampValido, fechaCR, inicioDiaCR, finDiaExclusivoCR
 } from "./modelo.js";
 import { pedirJson } from "./red.js";
 
-export const BASE_DATOS = "https://proyecto-iot-fa353-default-rtdb.firebaseio.com";
-export const RUTA_LECTURAS = "lecturas/equipo01";
+async function leerConfiguracion() {
+  const controlador = new AbortController();
+  const espera = setTimeout(() => controlador.abort(), 3000);
+  try {
+    const respuesta = await fetch(new URL("../config.local.json", import.meta.url), {
+      cache: "no-store", signal: controlador.signal
+    });
+    if (!respuesta.ok) return null;
+    const { firebase } = await respuesta.json();
+    if (!firebase?.databaseURL) return null;
+    const url = new URL(firebase.databaseURL);
+    const ruta = firebase.readingsPath ?? "lecturas/equipo01";
+    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash ||
+        url.pathname !== "/" || url.port ||
+        !/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.(?:firebaseio\.com|firebasedatabase\.app)$/.test(url.hostname) ||
+        typeof ruta !== "string" || !/^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(ruta)) return null;
+    return { base: url.origin, ruta };
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(espera);
+  }
+}
+
+// La configuración local es opcional: Open-Meteo funciona sin ella.
+const configuracion = await leerConfiguracion();
+export const BASE_DATOS = configuracion?.base ?? "";
+export const RUTA_LECTURAS = configuracion?.ruta ?? "lecturas/equipo01";
+export const firebaseConfigurado = () => configuracion !== null;
 
 const CAMPOS = ["temperatura", "humedad", "puntoRocio"];
 
 /** Construye la URL de consulta sin dejar fechas ni parámetros fijos en el código. */
 function urlConsulta(parametros = {}) {
+  if (!firebaseConfigurado()) throw new Error("Configura Firebase para consultar el ESP32.");
   const url = new URL(`${BASE_DATOS}/${RUTA_LECTURAS}.json`);
   for (const [clave, valor] of Object.entries(parametros)) {
     url.searchParams.set(clave, String(valor));
@@ -35,9 +52,7 @@ function urlConsulta(parametros = {}) {
  *
  * La respuesta REST es un objeto de identificadores generados por Firebase, no un array:
  * su orden de enumeración no es fiable, así que se ordena por `ts` explícitamente. Los
- * registros con fecha inválida se descartan y se informan aparte en vez de romper la
- * consulta, porque el historial antiguo puede tener lecturas incompletas que las reglas
- * nuevas ya no permiten pero tampoco corrigen hacia atrás.
+ * registros con fecha inválida se descartan y se informan aparte.
  */
 export function normalizarLecturas(respuesta) {
   const registros = [];
@@ -64,7 +79,7 @@ export function normalizarLecturas(respuesta) {
   return { registros, descartados };
 }
 
-const DENEGADO = "Firebase denegó la lectura. Revisa que las reglas permitan leer lecturas/equipo01.";
+const DENEGADO = "Firebase denegó la lectura. Revisa la configuración de tu proyecto.";
 
 const pedir = (url, señal) => pedirJson(url, {
   señal,
@@ -145,10 +160,8 @@ export async function leerUltimaLectura({ señal } = {}) {
 /**
  * Consulta la última lectura cada cierto tiempo y avisa cuando cambia.
  *
- * Es un sondeo deliberadamente espaciado mientras no esté el SDK: suficiente para un
- * dispositivo que envía una lectura por minuto, y lejos de golpear la base cada segundo.
- * Se detiene solo cuando la pestaña deja de estar visible y devuelve una función para
- * cancelarlo al cambiar de vista.
+ * Solo consulta mientras la pestaña está visible y devuelve una función para cancelar
+ * el sondeo al cambiar de vista.
  */
 export function observarUltimaLectura(alRecibir, alFallar, intervaloMs = 30000) {
   let cancelado = false;

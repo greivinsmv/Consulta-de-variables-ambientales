@@ -23,7 +23,7 @@ Hourly and daily queries can plot one or more variables together. Extremes uses 
 - Android SDK Platform **37** and SDK Build Tools **36.0.0**.
 - JDK **25** for the Gradle daemon, as specified in `gradle/gradle-daemon-jvm.properties`.
 - An emulator or device running Android **8.0 (API 26)** or later.
-- Internet access and a Firebase Realtime Database project with read access configured.
+- Internet access for weather requests. Firebase is optional and requires your own project.
 
 The repository includes the Gradle **9.6.0** wrapper. Use it for builds and tests.
 
@@ -35,23 +35,19 @@ Clone the repository and open `APP-MOVIL/android` with **File > Open** in Androi
 
 Install the required SDK components in **SDK Manager** and wait for Gradle sync to finish. Android Studio generates `local.properties` with your machine's SDK path.
 
-### 2. Configure Firebase
+### 2. Configure Firebase (optional)
 
-The Android application ID is:
+Weather queries work without Firebase. To enable the **ESP32** source, register an Android app in your own Firebase project with this application ID:
 
 ```text
 com.ic3101.consultaambiental
 ```
 
-The repository includes `app/google-services.json` for the demonstration project. To use your own project:
+Create a Realtime Database, then download the Android app's `google-services.json` and place it in `APP-MOVIL/android/app/`. Download it after creating the database so that `project_info.firebase_url` is included. This local file is ignored by Git; no shared project configuration is bundled.
 
-1. Register an Android app in Firebase with the application ID above.
-2. Download its `google-services.json` and place it in `APP-MOVIL/android/app/`.
-3. Update the Realtime Database URL in `MainActivity.kt`, `ConsultaPorHora.kt`, `ConsultaPorDia.kt` and `ConsultaHistorica.kt`.
-4. Keep the `lecturas/equipo01` path, or adjust the read references to match your schema.
-5. Follow the [access guide](../firebase/README.md) to allow reads of that path and restrict writes to the device. The rules include the `.indexOn: ["ts"]` index required by date queries.
+The app reads the database URL from that file, so no Kotlin files need editing. The expected data path is `lecturas/equipo01`; the [Firebase setup guide](../firebase/README.md) covers the supplied rules template.
 
-The demonstration project is `proyecto-iot-fa353`. The app only reads data; the ESP32 sends the readings. Firebase rules determine who can read and write.
+Sync Gradle and rebuild after adding or changing the file. Without it, the Google Services plugin stays disabled and the app opens **Clima de Costa Rica** by default. Selecting **ESP32** shows a setup notice rather than starting a database connection.
 
 ### 3. Run the app
 

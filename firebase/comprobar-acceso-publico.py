@@ -1,11 +1,12 @@
 """Comprueba las lecturas anónimas previstas sin escribir ni mostrar mediciones."""
 
+import argparse
 import json
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 
-BASE_DATOS = "https://proyecto-iot-fa353-default-rtdb.firebaseio.com"
 CONSULTAS = (
     ("Raíz", "/.json?shallow=true", False),
     ("Otro equipo", "/lecturas/equipo02.json?shallow=true", False),
@@ -15,9 +16,9 @@ CONSULTAS = (
 CAMPOS_LECTURA = {"temperatura", "humedad", "puntoRocio", "ts"}
 
 
-def comprobar(nombre, ruta, publica):
+def comprobar(base_datos, nombre, ruta, publica):
     try:
-        with urllib.request.urlopen(BASE_DATOS + ruta, timeout=20) as respuesta:
+        with urllib.request.urlopen(base_datos + ruta, timeout=20) as respuesta:
             datos = json.load(respuesta)
     except urllib.error.HTTPError as error:
         # Un 403 del proxy no prueba que Firebase haya denegado el acceso.
@@ -52,8 +53,30 @@ def comprobar(nombre, ruta, publica):
     return True
 
 
-def main():
-    resultados = [comprobar(*consulta) for consulta in CONSULTAS]
+def url_base(valor):
+    try:
+        url = urllib.parse.urlsplit(valor)
+        host = url.hostname or ""
+        dominio_firebase = host.endswith(".firebaseio.com") or host.endswith(".firebasedatabase.app")
+        valida = (
+            url.scheme == "https" and dominio_firebase
+            and not url.username and not url.password
+            and url.port in (None, 443)
+            and url.path in ("", "/") and not url.query and not url.fragment
+        )
+    except ValueError:
+        valida = False
+    if not valida:
+        raise argparse.ArgumentTypeError("Indica la URL HTTPS raíz de tu Realtime Database, sin credenciales ni parámetros.")
+    return valor.rstrip("/")
+
+
+def main(argumentos=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--database-url", required=True, type=url_base,
+                        help="URL de Realtime Database de tu propio proyecto")
+    opciones = parser.parse_args(argumentos)
+    resultados = [comprobar(opciones.database_url, *consulta) for consulta in CONSULTAS]
     print("Esta comprobación solo revisa lecturas anónimas; no prueba permisos de escritura ni todas las rutas de la base.")
     return 0 if all(resultados) else 1
 

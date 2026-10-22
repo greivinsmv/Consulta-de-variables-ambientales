@@ -65,8 +65,7 @@ WEB/               Cliente web, servidor de desarrollo y pruebas
 - [Configuración y ejecución de la app](APP-MOVIL/README.es.md)
 - [Comportamiento de las consultas y comprobaciones](APP-MOVIL/android/CONSULTAS.md)
 - [Configuración y pruebas del cliente web](WEB/README.es.md)
-- [Acceso de lectura y autenticación del ESP32](firebase/README.es.md)
-- [Seguridad, configuración pública y alcance de la revisión](SEGURIDAD.md)
+- [Configuración de Firebase](firebase/README.es.md)
 
 ## Ejecutar el proyecto
 
@@ -84,7 +83,7 @@ python WEB/servidor-dev.py
 
 Abre `http://localhost:8000`. La [guía web](WEB/README.es.md) describe las dependencias de red y cómo ejecutar las pruebas.
 
-La simulación de Wokwi se mantiene aparte del repositorio. El dispositivo utiliza una cuenta exclusiva de Firebase Authentication; la app recibe sus nuevas lecturas sin credenciales de escritura. Consulta la [configuración de acceso](firebase/README.es.md) para preparar y publicar las reglas.
+Los datos de Open-Meteo funcionan sin Firebase. Para habilitar las lecturas del ESP32, configura tu propio proyecto de Firebase siguiendo la [guía de configuración](firebase/README.es.md) y las guías de cada cliente. Los archivos locales de Firebase están excluidos de Git. La simulación de Wokwi se mantiene por separado.
 
 ## Clima y pronósticos
 

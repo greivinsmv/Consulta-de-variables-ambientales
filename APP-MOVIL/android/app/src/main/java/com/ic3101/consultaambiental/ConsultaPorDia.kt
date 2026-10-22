@@ -14,6 +14,10 @@ import java.time.format.DateTimeFormatter
 
 @Composable
 internal fun ConsultaPorDia(historial: HistorialClima? = null) {
+    val contexto = LocalContext.current
+    val referencia = remember(contexto, historial) {
+        if (historial == null) FirebaseLecturas.referencia(contexto) else null
+    }
     var inicio by remember { mutableStateOf(historial?.rango?.inicio ?: LocalDate.now(zonaConsulta)) }
     var fin by remember { mutableStateOf(historial?.rango?.fin ?: LocalDate.now(zonaConsulta)) }
     var elegidas by remember { mutableStateOf(listOf("temperatura")) }
@@ -55,6 +59,11 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
             cargando = false
             mensaje = if (datos.isEmpty()) "Sin datos. Historial disponible: ${historial.rango.inicio} al ${historial.rango.fin}." else ""
             onDispose { }
+        } else if (referencia == null) {
+            datos = emptyList()
+            cargando = false
+            mensaje = "Esta copia no tiene una base de datos configurada."
+            onDispose { }
         } else {
             var activo = true
             cargando = true
@@ -62,8 +71,7 @@ internal fun ConsultaPorDia(historial: HistorialClima? = null) {
             mensaje = ""
             val desde = rango.inicio.atStartOfDay(zonaConsulta).toInstant().toEpochMilli()
             val hasta = rango.fin.plusDays(1).atStartOfDay(zonaConsulta).toInstant().toEpochMilli() - 1
-            val consulta = FirebaseDatabase.getInstance("https://proyecto-iot-fa353-default-rtdb.firebaseio.com")
-                .getReference("lecturas/equipo01").orderByChild("ts")
+            val consulta = referencia.orderByChild("ts")
                 .startAt(desde.toDouble()).endAt(hasta.toDouble())
             val listener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {

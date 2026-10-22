@@ -5,6 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.google.firebase.database.*
 import java.time.Instant
@@ -13,6 +14,10 @@ import java.util.Locale
 
 @Composable
 internal fun ConsultaHistorica(historial: HistorialClima? = null) {
+    val contexto = LocalContext.current
+    val referencia = remember(contexto, historial) {
+        if (historial == null) FirebaseLecturas.referencia(contexto) else null
+    }
     var variableElegida by remember { mutableStateOf("temperatura") }
     var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
     var consultar by remember { mutableStateOf(false) }
@@ -39,6 +44,11 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
             recibido = true
             mensaje = ""
             onDispose { }
+        } else if (referencia == null) {
+            datos = emptyList()
+            cargando = false
+            mensaje = "Esta copia no tiene una base de datos configurada."
+            onDispose { }
         } else {
             var activo = true
             cargando = true
@@ -46,8 +56,6 @@ internal fun ConsultaHistorica(historial: HistorialClima? = null) {
             datos = emptyList()
             sinFecha = 0
             mensaje = ""
-            val referencia = FirebaseDatabase.getInstance("https://proyecto-iot-fa353-default-rtdb.firebaseio.com")
-                .getReference("lecturas/equipo01")
             val listener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     if (!activo) return

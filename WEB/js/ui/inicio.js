@@ -10,7 +10,7 @@
  */
 
 import { formatearValor, formatearFechaHora, hoyCR, fechaCR, esNumeroValido } from "../modelo.js";
-import { observarUltimaLectura } from "../firebase.js";
+import { observarUltimaLectura, firebaseConfigurado } from "../firebase.js";
 import { condicionWmo, datoActualAnterior } from "../openmeteo.js";
 import { icono, iconoClima } from "./iconos.js";
 import { esc, aviso, nota, tarjetaMedicion } from "./componentes.js";
@@ -23,7 +23,8 @@ let cancelarEscucha = null;
  * Consultar la base mientras nadie mira Inicio sería gastar peticiones para nada.
  */
 export function sincronizarEscucha(estado, alActualizar) {
-  const debeEscuchar = estado.fuente === "esp32" && estado.pantalla === "actual" && !estado.info;
+  const debeEscuchar = firebaseConfigurado() && estado.fuente === "esp32" &&
+    estado.pantalla === "actual" && !estado.info;
 
   if (!debeEscuchar) {
     cancelarEscucha?.();

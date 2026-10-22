@@ -5,6 +5,9 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+if (-not (Test-Path -LiteralPath $Configuracion -PathType Leaf)) {
+    throw 'Añade el google-services.json de tu propio proyecto o indica su ruta con -Configuracion.'
+}
 # Esta API key identifica el proyecto. La contraseña y el ID token sí son secretos.
 $configuracionFirebase = Get-Content -LiteralPath $Configuracion -Raw | ConvertFrom-Json
 $claveProyecto = $configuracionFirebase.client[0].api_key[0].current_key

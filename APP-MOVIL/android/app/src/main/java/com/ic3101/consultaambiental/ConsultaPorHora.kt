@@ -35,6 +35,9 @@ internal val variables = listOf(
 @Composable
 internal fun ConsultaPorHora(historial: HistorialClima? = null) {
     val contexto = LocalContext.current
+    val referencia = remember(contexto, historial) {
+        if (historial == null) FirebaseLecturas.referencia(contexto) else null
+    }
     var dia by remember { mutableStateOf(historial?.rango?.fin ?: LocalDate.now(zonaConsulta)) }
     var elegidas by remember { mutableStateOf(listOf("temperatura")) }
     var filtro by remember { mutableStateOf(ConfiguracionFiltro()) }
@@ -69,14 +72,18 @@ internal fun ConsultaPorHora(historial: HistorialClima? = null) {
             mensaje = if (datos.isEmpty()) "Sin datos. El historial descargado cubre ${historial.rango.inicio} al ${historial.rango.fin}."
                 else ""
             onDispose { }
+        } else if (referencia == null) {
+            datos = emptyList()
+            cargando = false
+            mensaje = "Esta copia no tiene una base de datos configurada."
+            onDispose { }
         } else {
             cargando = true
             datos = emptyList()
             mensaje = ""
             val inicio = fecha.atStartOfDay(zonaConsulta).toInstant().toEpochMilli()
             val fin = fecha.plusDays(1).atStartOfDay(zonaConsulta).toInstant().toEpochMilli()
-            val consulta = FirebaseDatabase.getInstance("https://proyecto-iot-fa353-default-rtdb.firebaseio.com")
-                .getReference("lecturas/equipo01").orderByChild("ts")
+            val consulta = referencia.orderByChild("ts")
                 .startAt(inicio.toDouble()).endAt((fin - 1).toDouble())
             val listener = object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {

@@ -21,7 +21,7 @@ Por hora y Por día permiten seleccionar una o varias variables en la misma grá
 - Android SDK Platform **37** y SDK Build Tools **36.0.0**.
 - JDK **25** para el daemon de Gradle, según `gradle/gradle-daemon-jvm.properties`.
 - Emulador o dispositivo con Android **8.0 (API 26)** o superior.
-- Acceso a internet y un proyecto Firebase Realtime Database con permisos de lectura.
+- Acceso a internet para consultar el clima. Firebase es opcional y requiere un proyecto propio.
 
 El repositorio incluye el wrapper de Gradle **9.6.0**; utiliza el wrapper para compilar y ejecutar pruebas.
 
@@ -33,23 +33,19 @@ Clona el repositorio y abre la carpeta `APP-MOVIL/android` desde **File > Open**
 
 Instala los componentes del SDK desde **SDK Manager** y espera a que termine la sincronización de Gradle. Android Studio genera `local.properties` con la ruta del SDK de la máquina.
 
-### 2. Configurar Firebase
+### 2. Configurar Firebase (opcional)
 
-El identificador de la aplicación es:
+Las consultas meteorológicas funcionan sin Firebase. Para habilitar la fuente **ESP32**, registra una aplicación Android en tu propio proyecto Firebase con este identificador:
 
 ```text
 com.ic3101.consultaambiental
 ```
 
-El repositorio incluye `app/google-services.json` para el proyecto de demostración. Si utilizas un proyecto propio:
+Crea una Realtime Database, descarga el `google-services.json` de la aplicación Android y colócalo en `APP-MOVIL/android/app/`. Descárgalo después de crear la base para que incluya `project_info.firebase_url`. Este archivo local queda ignorado por Git; el repositorio no incluye la configuración de un proyecto compartido.
 
-1. Registra una aplicación Android con el identificador anterior en Firebase.
-2. Descarga su `google-services.json` y colócalo en `APP-MOVIL/android/app/`.
-3. Configura la URL de Realtime Database en `MainActivity.kt`, `ConsultaPorHora.kt`, `ConsultaPorDia.kt` y `ConsultaHistorica.kt`.
-4. Conserva la ruta `lecturas/equipo01` o adapta las referencias de lectura al esquema elegido.
-5. Sigue la [guía de acceso](../firebase/README.es.md) para permitir lectura de esa ruta y reservar la escritura al dispositivo. Las reglas incluyen el índice `.indexOn: ["ts"]` necesario para las consultas por fecha.
+La app obtiene la URL de ese archivo, sin editar archivos Kotlin. La ruta de datos esperada es `lecturas/equipo01`; la [guía de Firebase](../firebase/README.es.md) explica cómo usar la plantilla de reglas incluida.
 
-El proyecto de demostración utiliza `proyecto-iot-fa353`. La aplicación solo consulta datos; el ESP32 es el componente que envía las lecturas. Las reglas de Firebase determinan quién puede leer y escribir.
+Sincroniza Gradle y vuelve a compilar después de añadir o cambiar el archivo. Sin él, el plugin de Google Services permanece desactivado y la app abre **Clima de Costa Rica** por defecto. Al seleccionar **ESP32**, muestra un aviso de configuración en lugar de iniciar una conexión a la base.
 
 ### 3. Ejecutar
 

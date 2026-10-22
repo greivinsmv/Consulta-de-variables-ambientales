@@ -16,3 +16,5 @@ local.properties
 
 # Kotlin compiler local cache
 .kotlin/
+# Configuración del proyecto Firebase de cada copia
+/app/google-services.json

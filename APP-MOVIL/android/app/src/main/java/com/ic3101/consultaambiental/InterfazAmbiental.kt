@@ -37,12 +37,16 @@ private val secciones = listOf(
 @Composable
 fun InterfazAmbiental(ciclo: Lifecycle) {
     val contexto = LocalContext.current
+    val firebaseDisponible = remember(contexto) { FirebaseLecturas.configurada(contexto) }
     val preferencias = remember { contexto.getSharedPreferences("apariencia", Context.MODE_PRIVATE) }
     val oscuroSistema = isSystemInDarkTheme()
     var oscuro by rememberSaveable { mutableStateOf(preferencias.getBoolean("oscuro", oscuroSistema)) }
     var mostrarInfo by rememberSaveable { mutableStateOf(false) }
     var pantalla by rememberSaveable { mutableStateOf("actual") }
-    var fuente by rememberSaveable { mutableStateOf(preferencias.getString("fuente", "esp32") ?: "esp32") }
+    var fuente by rememberSaveable {
+        val guardada = preferencias.getString("fuente", null)
+        mutableStateOf(if (!firebaseDisponible || guardada == "clima") "clima" else "esp32")
+    }
     var zonaElegida by rememberSaveable { mutableStateOf(preferencias.getString("zona_clima", "santa_clara") ?: "santa_clara") }
     val ubicacion = zonasClimaticas.firstOrNull { it.id == zonaElegida } ?: santaClara
     val alcance = rememberCoroutineScope()
@@ -121,6 +125,12 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
                         fuente = it
                         preferencias.edit().putString("fuente", it).apply()
                     }
+                    if (fuente == "esp32" && !firebaseDisponible) {
+                        AvisoEsp32SinConfigurar {
+                            fuente = "clima"
+                            preferencias.edit().putString("fuente", fuente).apply()
+                        }
+                    }
                     if (fuente == "clima") {
                         SelectorZonaClima(ubicacion) { nueva ->
                             zonaElegida = nueva.id
@@ -135,7 +145,7 @@ fun InterfazAmbiental(ciclo: Lifecycle) {
                         }
                     }
                     val datosClima = if (fuente == "clima") historial else null
-                    if (fuente == "esp32" || datosClima != null) key(fuente, ubicacion.id, datosClima?.rango) {
+                    if ((fuente == "esp32" && firebaseDisponible) || datosClima != null) key(fuente, ubicacion.id, datosClima?.rango) {
                         if (pantalla == "actual" && fuente == "esp32") UltimaLectura(Modifier)
                         else if (pantalla != "actual") Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
