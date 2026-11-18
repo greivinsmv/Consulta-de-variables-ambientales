@@ -1,5 +1,9 @@
 # Consulta Ambiental
 
+<p align="center">
+  <img src="docs/images/consulta-ambiental-banner.png" width="960" alt="Consulta Ambiental — Android and web tools for temperature, humidity and dew point, illustrated with mountains and weather data curves.">
+</p>
+
 **English** | [Español](README.es.md)
 
 An Android app and web client for exploring environmental data from Firebase Realtime Database and Open-Meteo. The project combines simulated ESP32/DHT22 readings with weather data for Costa Rica, with time-based queries, charts, configurable filters and exports for temperature, relative humidity and dew point.
@@ -7,6 +11,10 @@ An Android app and web client for exploring environmental data from Firebase Rea
 Academic team project for the IC-3101 course. This repository contains the mobile app, web client and database access configuration.
 
 ## Features
+
+<p align="center">
+  <img src="docs/images/consulta-ambiental-features.png" width="960" alt="Query hourly and daily averages, compare variables and filter outliers. Export CSV on Android and the web, and PDF on the web.">
+</p>
 
 - **Weather in Costa Rica:** current conditions, hourly forecasts and a ten-day forecast for ten locations, refreshed every 15 minutes while the Home screen is visible.
 - **Weather history:** hourly data for the previous ten complete days, with a separate local copy for each location that can be analyzed offline.

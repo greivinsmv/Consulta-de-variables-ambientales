@@ -1,5 +1,9 @@
 # Consulta Ambiental
 
+<p align="center">
+  <img src="docs/images/consulta-ambiental-banner.png" width="960" alt="Consulta Ambiental — aplicación Android y web para temperatura, humedad y punto de rocío, ilustrada con montañas y curvas de datos meteorológicos.">
+</p>
+
 [English](README.md) | **Español**
 
 Aplicación Android y cliente web para consultar y analizar datos ambientales procedentes de Firebase Realtime Database y de Open-Meteo. Integra lecturas de un ESP32 con sensor DHT22 simulado en Wokwi y permite explorar temperatura, humedad relativa y punto de rocío mediante consultas temporales, gráficos y exportación de resultados.
@@ -7,6 +11,10 @@ Aplicación Android y cliente web para consultar y analizar datos ambientales pr
 Proyecto académico del curso IC-3101. El repositorio reúne la aplicación móvil, el cliente web y la configuración de acceso a los datos.
 
 ## Funcionalidades
+
+<p align="center">
+  <img src="docs/images/consulta-ambiental-features.png" width="960" alt="Consulta promedios por hora y por día, compara variables y filtra valores atípicos. Exporta CSV desde Android y la web, y PDF desde la web.">
+</p>
 
 - **Clima de Costa Rica:** condiciones actuales, pronóstico por hora y de diez días para diez zonas, con actualización automática cada 15 minutos mientras Inicio está visible.
 - **Historial meteorológico:** datos horarios de los diez días completos anteriores para la zona seleccionada, con una copia local independiente por lugar para consultar sin conexión.
